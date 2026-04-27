@@ -23,6 +23,8 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -31,15 +33,20 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ReceiptLong
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Explore
+import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Map
 import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.material.icons.rounded.PieChart
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -49,6 +56,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Shapes
@@ -69,8 +77,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -87,7 +97,11 @@ import com.triplet.app.travel.TripletTimeFormatter
 import com.triplet.app.travel.TripletTravelStore
 import java.text.NumberFormat
 import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlin.math.roundToInt
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: android.os.Bundle?) {
@@ -114,6 +128,10 @@ private val TossGreen700 = Color(0xFF029359)
 private val TossOrange50 = Color(0xFFFFF3E0)
 private val TossOrange700 = Color(0xFFF57800)
 private val TossRed600 = Color(0xFFE42939)
+private val TossTeal600 = Color(0xFF00A889)
+private val TossPurple600 = Color(0xFF7C5CFF)
+private val manualExpenseInputFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+private val expenseCategoryOptions = listOf("FOOD", "CAFE", "SHOPPING", "CULTURE", "TRANSPORT", "LODGING", "ETC")
 
 private fun displayCategory(category: String?): String {
     return when (category?.uppercase(Locale.US)) {
@@ -127,6 +145,35 @@ private fun displayCategory(category: String?): String {
         null, "" -> "기타"
         else -> category
     }
+}
+
+private fun formatManualExpenseDateTime(instant: Instant): String {
+    return manualExpenseInputFormatter.format(
+        LocalDateTime.ofInstant(instant, ZoneId.systemDefault()),
+    )
+}
+
+private fun parseManualExpenseDateTime(raw: String): Instant? {
+    val normalized = raw.trim().replace('.', '-')
+    return runCatching {
+        LocalDateTime
+            .parse(normalized, manualExpenseInputFormatter)
+            .atZone(ZoneId.systemDefault())
+            .toInstant()
+    }.getOrNull()
+}
+
+private enum class TripletTab(
+    val label: String,
+    val title: String,
+    val subtitle: String,
+    val icon: ImageVector,
+) {
+    Home("홈", "Triplet", "여행 소비 지도", Icons.Rounded.Home),
+    Map("지도", "지도", "이동 경로와 결제 위치", Icons.Rounded.Map),
+    Expenses("소비내역", "소비 내역", "결제 기록 전체 보기", Icons.AutoMirrored.Rounded.ReceiptLong),
+    Summary("소비요약", "소비 요약", "카테고리별 지출 분석", Icons.Rounded.PieChart),
+    Settings("설정", "설정", "권한과 시연 상태 관리", Icons.Rounded.Settings),
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -163,7 +210,8 @@ private fun TripletDebugApp() {
     }
     var fullScreenMap by rememberSaveable { mutableStateOf(false) }
     var selectedMapExpense by remember { mutableStateOf<MatchedExpense?>(null) }
-    var expenseListOpen by rememberSaveable { mutableStateOf(false) }
+    var selectedTab by rememberSaveable { mutableStateOf(TripletTab.Home) }
+    var manualExpenseEntryOpen by rememberSaveable { mutableStateOf(false) }
 
     fun requestOrStartTravelMode() {
         if (locationGranted) {
@@ -199,6 +247,34 @@ private fun TripletDebugApp() {
         refreshTick++
     }
 
+    fun addManualExpenseAndRefresh(
+        merchantName: String,
+        amountMinor: Long,
+        occurredAt: Instant,
+        category: String,
+        note: String?,
+    ) {
+        val expense =
+            TripletTravelStore.addManualExpense(
+                merchantName = merchantName,
+                amountMinor = amountMinor,
+                occurredAt = occurredAt,
+                category = category,
+                note = note,
+            )
+        TripletDebugStore.push(
+            NotificationDebugEvent(
+                packageName = context.packageName,
+                stage = NotificationStage.MATCHED,
+                summary = "수동 소비 입력 완료",
+                detail = "${expense.merchantName} ${expense.amountMinor}원 저장",
+            ),
+        )
+        manualExpenseEntryOpen = false
+        selectedTab = TripletTab.Expenses
+        refreshTick++
+    }
+
     TripletAppTheme {
         if (fullScreenMap) {
             FullScreenMapPage(
@@ -213,23 +289,15 @@ private fun TripletDebugApp() {
             )
             return@TripletAppTheme
         }
-        if (expenseListOpen) {
-            ExpenseListPage(
-                expenses = expenses,
-                onBack = { expenseListOpen = false },
-            )
-            return@TripletAppTheme
-        }
-
         Scaffold(
             containerColor = TossGrey100,
             topBar = {
                 TopAppBar(
                     title = {
                         Column {
-                            Text("Triplet", fontWeight = FontWeight.Bold)
+                            Text(selectedTab.title, fontWeight = FontWeight.Bold)
                             Text(
-                                text = "여행 소비 지도",
+                                text = selectedTab.subtitle,
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -241,235 +309,321 @@ private fun TripletDebugApp() {
                     ),
                 )
             },
+            bottomBar = {
+                TripletBottomNavigationBar(
+                    selectedTab = selectedTab,
+                    onTabSelected = { selectedTab = it },
+                )
+            },
         ) { paddingValues ->
             LazyColumn(
-                modifier = Modifier.background(TossGrey100),
+                modifier = Modifier
+                    .background(TossGrey100)
+                    .padding(bottom = paddingValues.calculateBottomPadding()),
                 contentPadding = PaddingValues(
                     start = 20.dp,
                     top = paddingValues.calculateTopPadding() + 10.dp,
                     end = 20.dp,
-                    bottom = 24.dp,
+                    bottom = 18.dp,
                 ),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                item {
-                    TripletHeroCard(
-                        totalAmountMinor = totalAmountMinor,
-                        expenseCount = expenses.size,
-                        sampleCount = locationSamples.size,
-                        topCategory = topCategory,
-                        travelModeEnabled = travelModeEnabled,
-                        locationServiceActive = locationServiceActive,
-                        onStart = { requestOrStartTravelMode() },
-                        onInjectRoute = { injectDemoRouteAndRefresh() },
-                    )
-                }
+                when (selectedTab) {
+                    TripletTab.Home -> {
+                        item {
+                            TripletHeroCard(
+                                totalAmountMinor = totalAmountMinor,
+                                expenseCount = expenses.size,
+                                sampleCount = locationSamples.size,
+                                topCategory = topCategory,
+                                travelModeEnabled = travelModeEnabled,
+                                locationServiceActive = locationServiceActive,
+                                onStart = { requestOrStartTravelMode() },
+                                onInjectRoute = { injectDemoRouteAndRefresh() },
+                            )
+                        }
 
-                item {
-                    TripletMapSection(
-                        samples = locationSamples,
-                        expenses = expenses,
-                        onOpenFullMap = {
-                            selectedMapExpense = null
-                            fullScreenMap = true
-                        },
-                    )
-                }
+                        item {
+                            TripletMapSection(
+                                samples = locationSamples,
+                                expenses = expenses,
+                                onOpenFullMap = {
+                                    selectedMapExpense = null
+                                    fullScreenMap = true
+                                },
+                            )
+                        }
 
-                item {
-                    StatusCard(
-                        title = "시연 설정",
-                        body = "여행모드를 켜고 테스트 결제를 보내세요.",
-                    ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
+                        item {
+                            SectionTitleRow(
+                                title = "소비 내역",
+                                subtitle = "최근 결제순",
+                                actionLabel = if (expenses.size > 2) "더보기" else null,
+                                onAction = { selectedTab = TripletTab.Expenses },
+                            )
+                        }
+
+                        if (expenses.isEmpty()) {
+                            item { EmptyExpenseCard() }
+                        } else {
+                            items(expenses.take(2), key = { it.txId }) { expense ->
+                                ExpenseCard(expense)
+                            }
+                        }
+
+                        item {
+                            StatsSummaryCard(
+                                totalAmountMinor = totalAmountMinor,
+                                expenseCount = expenses.size,
+                                topCategory = topCategory,
+                                categoryBreakdown = categoryBreakdown,
+                            )
+                        }
+                    }
+
+                    TripletTab.Map -> {
+                        item {
+                            TripletMapSection(
+                                samples = locationSamples,
+                                expenses = expenses,
+                                onOpenFullMap = {
+                                    selectedMapExpense = null
+                                    fullScreenMap = true
+                                },
+                            )
+                        }
+                        item {
+                            StatusCard(
+                                title = "지도 보기",
+                                body = "결제 순서대로 선을 이어 여행 소비 흐름을 보여줍니다.",
                             ) {
-                                Column {
-                                    Text(
-                                        text = if (travelModeEnabled) "여행모드 켜짐" else "여행모드 꺼짐",
-                                        fontWeight = FontWeight.SemiBold,
-                                    )
-                                    Text(
-                                        text = if (locationServiceActive) {
-                                            "위치 기록 중입니다."
-                                        } else {
-                                            "위치 기록이 멈춰 있습니다."
-                                        },
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                                Switch(
-                                    checked = travelModeEnabled,
-                                    onCheckedChange = { enabled ->
-                                        if (enabled) {
-                                            requestOrStartTravelMode()
-                                        } else {
-                                            stopTravelModeAndRefresh()
-                                        }
+                                Text(
+                                    text = "지도 카드를 누르면 화면 전체로 확대됩니다. 전체 지도에서는 핀을 눌러 결제 장소와 금액을 확인할 수 있습니다.",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+
+                    TripletTab.Expenses -> {
+                        item {
+                            SectionTitleRow(
+                                title = "소비 내역",
+                                subtitle = "전체 ${expenses.size}건",
+                                actionLabel = if (manualExpenseEntryOpen) "입력 닫기" else "수동 입력",
+                                onAction = { manualExpenseEntryOpen = !manualExpenseEntryOpen },
+                            )
+                        }
+                        if (manualExpenseEntryOpen) {
+                            item {
+                                ManualExpenseEntryCard(
+                                    onSave = { merchantName, amountMinor, occurredAt, category, note ->
+                                        addManualExpenseAndRefresh(
+                                            merchantName = merchantName,
+                                            amountMinor = amountMinor,
+                                            occurredAt = occurredAt,
+                                            category = category,
+                                            note = note,
+                                        )
                                     },
                                 )
                             }
-                            Row(
-                                modifier = Modifier.horizontalScroll(rememberScrollState()),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                Button(
-                                    onClick = { requestOrStartTravelMode() },
-                                    colors = ButtonDefaults.buttonColors(containerColor = TossBlue500),
-                                ) {
-                                    Icon(Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("여행모드 시작")
-                                }
-                                OutlinedButton(onClick = { stopTravelModeAndRefresh() }) {
-                                    Icon(Icons.Rounded.Stop, contentDescription = null, modifier = Modifier.size(18.dp))
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("여행모드 종료")
-                                }
-                                OutlinedButton(
-                                    onClick = { injectDemoRouteAndRefresh() },
-                                ) {
-                                    Icon(Icons.Rounded.Map, contentDescription = null, modifier = Modifier.size(18.dp))
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("데모 경로 주입")
-                                }
-                                OutlinedButton(
-                                    onClick = { clearDemoDataAndRefresh() },
-                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = TossRed600),
-                                ) {
-                                    Icon(Icons.Rounded.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("데이터 초기화")
-                                }
-                            }
-                            HorizontalDivider()
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                            ) {
-                                SummaryMetric("위치 샘플", locationSamples.size.toString())
-                                SummaryMetric("매칭된 결제", expenses.size.toString())
-                                SummaryMetric("로그", events.size.toString())
+                        }
+                        if (expenses.isEmpty()) {
+                            item { EmptyExpenseCard() }
+                        } else {
+                            items(expenses, key = { it.txId }) { expense ->
+                                ExpenseCard(expense)
                             }
                         }
                     }
-                }
 
-                item {
-                    StatsSummaryCard(
-                        totalAmountMinor = totalAmountMinor,
-                        expenseCount = expenses.size,
-                        topCategory = topCategory,
-                        categoryBreakdown = categoryBreakdown,
-                    )
-                }
-
-                item {
-                    StatusCard(
-                        title = "시연 준비 상태",
-                        body = "알림 접근과 위치 권한을 확인하세요.",
-                    ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            StatusRow("알림 접근", listenerGranted)
-                            StatusRow("위치 권한", locationGranted)
-                            StatusRow("위치 서비스", locationServiceActive)
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Button(
-                                    onClick = {
-                                        context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
-                                    },
-                                    colors = ButtonDefaults.buttonColors(containerColor = TossGrey900),
-                                ) {
-                                    Icon(Icons.Rounded.Notifications, contentDescription = null, modifier = Modifier.size(18.dp))
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("알림 접근 열기")
-                                }
-                                OutlinedButton(
-                                    onClick = {
-                                        requestLocationPermission.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-                                    },
-                                ) {
-                                    Icon(Icons.Rounded.LocationOn, contentDescription = null, modifier = Modifier.size(18.dp))
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("위치 권한 요청")
-                                }
-                            }
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                OutlinedButton(onClick = { refreshTick++ }) {
-                                    Icon(Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("상태 새로고침")
-                                }
-                            }
-                        }
-                    }
-                }
-
-                item {
-                    StatusCard(
-                        title = "결제 알림 출처",
-                        body = "테스트 알림 앱만 읽도록 설정되어 있습니다.",
-                    ) {
-                        Text(
-                            text = "com.triplet.demo.notifier",
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Medium,
-                        )
-                    }
-                }
-
-                item {
-                    SectionTitleRow(
-                        title = "소비 내역",
-                        subtitle = "최근 결제순",
-                        actionLabel = if (expenses.size > 2) "더보기" else null,
-                        onAction = { expenseListOpen = true },
-                    )
-                }
-
-                if (expenses.isEmpty()) {
-                    item {
-                        Card(modifier = Modifier.fillMaxWidth()) {
-                            Text(
-                                text = "아직 매칭된 결제 내역이 없습니다. 여행모드를 켠 뒤 Test Notifier에서 결제 알림을 보내보세요.",
-                                modifier = Modifier.padding(16.dp),
+                    TripletTab.Summary -> {
+                        item {
+                            StatsSummaryCard(
+                                totalAmountMinor = totalAmountMinor,
+                                expenseCount = expenses.size,
+                                topCategory = topCategory,
+                                categoryBreakdown = categoryBreakdown,
                             )
                         }
-                    }
-                } else {
-                    items(expenses.take(2), key = { it.txId }) { expense ->
-                        ExpenseCard(expense)
-                    }
-                }
-
-                item { SectionTitle("위치 기록", "최근 수집순") }
-
-                if (locationSamples.isEmpty()) {
-                    item {
-                        Card(modifier = Modifier.fillMaxWidth()) {
-                            Text(
-                                text = "여행모드를 시작하면 위치 샘플이 이곳에 쌓입니다.",
-                                modifier = Modifier.padding(16.dp),
-                            )
+                        item {
+                            StatusCard(
+                                title = "분석 기준",
+                                body = "결제 알림과 위치 매칭 결과를 카테고리별로 집계합니다.",
+                            ) {
+                                Text(
+                                    text = "발표에서는 분야별 지출 그래프를 통해 여행 중 어떤 분야에 소비가 집중됐는지 보여줄 수 있습니다.",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                         }
                     }
-                } else {
-                    items(locationSamples.take(10), key = { it.id }) { sample ->
-                        LocationSampleCard(sample)
-                    }
-                }
 
-                item { SectionTitle("시연 로그", "처리 상태") }
+                    TripletTab.Settings -> {
+                        item {
+                            StatusCard(
+                                title = "시연 설정",
+                                body = "여행모드를 켜고 테스트 결제를 보내세요.",
+                            ) {
+                                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Column {
+                                            Text(
+                                                text = if (travelModeEnabled) "여행모드 켜짐" else "여행모드 꺼짐",
+                                                fontWeight = FontWeight.SemiBold,
+                                            )
+                                            Text(
+                                                text = if (locationServiceActive) {
+                                                    "위치 기록 중입니다."
+                                                } else {
+                                                    "위치 기록이 멈춰 있습니다."
+                                                },
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
+                                        Switch(
+                                            checked = travelModeEnabled,
+                                            onCheckedChange = { enabled ->
+                                                if (enabled) {
+                                                    requestOrStartTravelMode()
+                                                } else {
+                                                    stopTravelModeAndRefresh()
+                                                }
+                                            },
+                                        )
+                                    }
+                                    Row(
+                                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        Button(
+                                            onClick = { requestOrStartTravelMode() },
+                                            colors = ButtonDefaults.buttonColors(containerColor = TossBlue500),
+                                        ) {
+                                            Icon(Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text("여행모드 시작")
+                                        }
+                                        OutlinedButton(onClick = { stopTravelModeAndRefresh() }) {
+                                            Icon(Icons.Rounded.Stop, contentDescription = null, modifier = Modifier.size(18.dp))
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text("여행모드 종료")
+                                        }
+                                        OutlinedButton(
+                                            onClick = { injectDemoRouteAndRefresh() },
+                                        ) {
+                                            Icon(Icons.Rounded.Map, contentDescription = null, modifier = Modifier.size(18.dp))
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text("데모 경로 주입")
+                                        }
+                                        OutlinedButton(
+                                            onClick = { clearDemoDataAndRefresh() },
+                                            colors = ButtonDefaults.outlinedButtonColors(contentColor = TossRed600),
+                                        ) {
+                                            Icon(Icons.Rounded.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text("데이터 초기화")
+                                        }
+                                    }
+                                    HorizontalDivider()
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                    ) {
+                                        SummaryMetric("위치 샘플", locationSamples.size.toString())
+                                        SummaryMetric("매칭된 결제", expenses.size.toString())
+                                        SummaryMetric("로그", events.size.toString())
+                                    }
+                                }
+                            }
+                        }
 
-                if (events.isEmpty()) {
-                    item { EmptyStateCard() }
-                } else {
-                    items(items = events, key = { it.id }) { event ->
-                        NotificationEventCard(event = event)
+                        item {
+                            StatusCard(
+                                title = "시연 준비 상태",
+                                body = "알림 접근과 위치 권한을 확인하세요.",
+                            ) {
+                                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    StatusRow("알림 접근", listenerGranted)
+                                    StatusRow("위치 권한", locationGranted)
+                                    StatusRow("위치 서비스", locationServiceActive)
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Button(
+                                            onClick = {
+                                                context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                                            },
+                                            colors = ButtonDefaults.buttonColors(containerColor = TossGrey900),
+                                        ) {
+                                            Icon(Icons.Rounded.Notifications, contentDescription = null, modifier = Modifier.size(18.dp))
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text("알림 접근 열기")
+                                        }
+                                        OutlinedButton(
+                                            onClick = {
+                                                requestLocationPermission.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                                            },
+                                        ) {
+                                            Icon(Icons.Rounded.LocationOn, contentDescription = null, modifier = Modifier.size(18.dp))
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text("위치 권한 요청")
+                                        }
+                                    }
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        OutlinedButton(onClick = { refreshTick++ }) {
+                                            Icon(Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text("상태 새로고침")
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        item {
+                            StatusCard(
+                                title = "결제 알림 출처",
+                                body = "테스트 알림 앱만 읽도록 설정되어 있습니다.",
+                            ) {
+                                Text(
+                                    text = "com.triplet.demo.notifier",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Medium,
+                                )
+                            }
+                        }
+
+                        item { SectionTitle("위치 기록", "최근 수집순") }
+
+                        if (locationSamples.isEmpty()) {
+                            item {
+                                Card(modifier = Modifier.fillMaxWidth()) {
+                                    Text(
+                                        text = "여행모드를 시작하면 위치 샘플이 이곳에 쌓입니다.",
+                                        modifier = Modifier.padding(16.dp),
+                                    )
+                                }
+                            }
+                        } else {
+                            items(locationSamples.take(10), key = { it.id }) { sample ->
+                                LocationSampleCard(sample)
+                            }
+                        }
+
+                        item { SectionTitle("시연 로그", "처리 상태") }
+
+                        if (events.isEmpty()) {
+                            item { EmptyStateCard() }
+                        } else {
+                            items(items = events, key = { it.id }) { event ->
+                                NotificationEventCard(event = event)
+                            }
+                        }
                     }
                 }
             }
@@ -506,6 +660,78 @@ private fun TripletAppTheme(content: @Composable () -> Unit) {
         ),
         content = content,
     )
+}
+
+@Composable
+private fun TripletBottomNavigationBar(
+    selectedTab: TripletTab,
+    onTabSelected: (TripletTab) -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(TossGrey100)
+            .navigationBarsPadding()
+            .padding(start = 18.dp, end = 18.dp, top = 8.dp, bottom = 12.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .shadow(18.dp, RoundedCornerShape(34.dp)),
+            color = Color.White,
+            shape = RoundedCornerShape(34.dp),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(78.dp)
+                    .padding(horizontal = 10.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TripletTab.values().forEach { tab ->
+                    TripletBottomNavigationItem(
+                        tab = tab,
+                        selected = tab == selectedTab,
+                        onClick = { onTabSelected(tab) },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TripletBottomNavigationItem(
+    tab: TripletTab,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val contentColor = if (selected) TossGrey900 else TossGrey500
+    Column(
+        modifier = modifier
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(5.dp),
+    ) {
+        Icon(
+            imageVector = tab.icon,
+            contentDescription = tab.label,
+            modifier = Modifier.size(27.dp),
+            tint = contentColor,
+        )
+        Text(
+            text = tab.label,
+            style = MaterialTheme.typography.labelSmall,
+            color = contentColor,
+            fontWeight = if (selected) FontWeight.Black else FontWeight.SemiBold,
+            maxLines = 1,
+        )
+    }
 }
 
 @Composable
@@ -930,6 +1156,158 @@ private fun InfoTag(
 }
 
 @Composable
+private fun ManualExpenseEntryCard(
+    onSave: (String, Long, Instant, String, String?) -> Unit,
+) {
+    var merchantName by rememberSaveable { mutableStateOf("") }
+    var amountText by rememberSaveable { mutableStateOf("") }
+    var dateTimeText by rememberSaveable { mutableStateOf(formatManualExpenseDateTime(Instant.now())) }
+    var selectedCategory by rememberSaveable { mutableStateOf("FOOD") }
+    var noteText by rememberSaveable { mutableStateOf("") }
+    var errorMessage by rememberSaveable { mutableStateOf<String?>(null) }
+
+    StatusCard(
+        title = "소비 수동 입력",
+        body = "현금 결제나 누락된 결제를 직접 추가합니다.",
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(
+                text = "입력한 날짜시간 근처에 위치 샘플이 있으면 지도 핀으로 자동 연결됩니다.",
+                style = MaterialTheme.typography.bodySmall,
+                color = TossGrey600,
+            )
+            OutlinedTextField(
+                value = merchantName,
+                onValueChange = {
+                    merchantName = it
+                    errorMessage = null
+                },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("장소") },
+                placeholder = { Text("예: 광장시장 순희네빈대떡") },
+                singleLine = true,
+            )
+            OutlinedTextField(
+                value = amountText,
+                onValueChange = {
+                    amountText = it
+                    errorMessage = null
+                },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("금액") },
+                placeholder = { Text("예: 12000") },
+                suffix = { Text("원") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            )
+            OutlinedTextField(
+                value = dateTimeText,
+                onValueChange = {
+                    dateTimeText = it
+                    errorMessage = null
+                },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("날짜시간") },
+                placeholder = { Text("yyyy-MM-dd HH:mm") },
+                singleLine = true,
+            )
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "카테고리",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = TossGrey800,
+                    fontWeight = FontWeight.Bold,
+                )
+                Row(
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    expenseCategoryOptions.forEach { category ->
+                        ManualCategoryChip(
+                            category = category,
+                            selected = selectedCategory == category,
+                            onClick = {
+                                selectedCategory = category
+                                errorMessage = null
+                            },
+                        )
+                    }
+                }
+            }
+            OutlinedTextField(
+                value = noteText,
+                onValueChange = { noteText = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("메모") },
+                placeholder = { Text("선택 입력") },
+                minLines = 2,
+            )
+            if (errorMessage != null) {
+                Text(
+                    text = errorMessage.orEmpty(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TossRed600,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+            Button(
+                onClick = {
+                    val amountMinor = amountText.filter { it.isDigit() }.toLongOrNull()
+                    val occurredAt = parseManualExpenseDateTime(dateTimeText)
+                    when {
+                        merchantName.isBlank() -> errorMessage = "장소를 입력해주세요."
+                        amountMinor == null || amountMinor <= 0L -> errorMessage = "금액을 숫자로 입력해주세요."
+                        occurredAt == null -> errorMessage = "날짜시간은 yyyy-MM-dd HH:mm 형식으로 입력해주세요."
+                        else -> {
+                            onSave(
+                                merchantName.trim(),
+                                amountMinor,
+                                occurredAt,
+                                selectedCategory,
+                                noteText.trim().takeIf { it.isNotBlank() },
+                            )
+                            merchantName = ""
+                            amountText = ""
+                            dateTimeText = formatManualExpenseDateTime(Instant.now())
+                            selectedCategory = "FOOD"
+                            noteText = ""
+                            errorMessage = null
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = TossBlue500),
+            ) {
+                Text("소비 추가")
+            }
+        }
+    }
+}
+
+@Composable
+private fun ManualCategoryChip(
+    category: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val containerColor = if (selected) TossGrey900 else TossGrey100
+    val contentColor = if (selected) Color.White else TossGrey700
+    Box(
+        modifier = Modifier
+            .background(containerColor, CircleShape)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 13.dp, vertical = 9.dp),
+    ) {
+        Text(
+            text = displayCategory(category),
+            style = MaterialTheme.typography.bodySmall,
+            color = contentColor,
+            fontWeight = FontWeight.Bold,
+        )
+    }
+}
+
+@Composable
 private fun StatsSummaryCard(
     totalAmountMinor: Long,
     expenseCount: Int,
@@ -957,7 +1335,11 @@ private fun StatsSummaryCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    CategorySpendingChart(
+                        categoryBreakdown = categoryBreakdown,
+                        totalAmountMinor = totalAmountMinor,
+                    )
                     Row(
                         modifier = Modifier.horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -969,6 +1351,107 @@ private fun StatsSummaryCard(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun CategorySpendingChart(
+    categoryBreakdown: List<Pair<String, Long>>,
+    totalAmountMinor: Long,
+) {
+    val amountFormat = remember { NumberFormat.getIntegerInstance(Locale.KOREA) }
+    val chartTotal = when {
+        totalAmountMinor > 0L -> totalAmountMinor
+        else -> categoryBreakdown.sumOf { it.second }.coerceAtLeast(1L)
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(
+            text = "분야별 지출 그래프",
+            style = MaterialTheme.typography.labelLarge,
+            color = TossGrey900,
+            fontWeight = FontWeight.Bold,
+        )
+        categoryBreakdown.forEach { (category, amount) ->
+            CategorySpendingBar(
+                category = category,
+                amount = amount,
+                totalAmountMinor = chartTotal,
+                amountFormat = amountFormat,
+            )
+        }
+    }
+}
+
+@Composable
+private fun CategorySpendingBar(
+    category: String,
+    amount: Long,
+    totalAmountMinor: Long,
+    amountFormat: NumberFormat,
+) {
+    val fraction = if (totalAmountMinor > 0L) {
+        amount.toFloat() / totalAmountMinor.toFloat()
+    } else {
+        0f
+    }
+    val percent = (fraction * 100).roundToInt()
+    val barFraction = if (fraction > 0f) fraction.coerceIn(0.06f, 1f) else 0f
+    val graphColor = categoryGraphColor(category)
+
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .background(graphColor, CircleShape),
+                )
+                Text(
+                    text = displayCategory(category),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TossGrey800,
+                )
+            }
+            Text(
+                text = "${amountFormat.format(amount)}원 · ${percent}%",
+                style = MaterialTheme.typography.bodySmall,
+                color = TossGrey600,
+                fontWeight = FontWeight.Medium,
+            )
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(10.dp)
+                .background(TossGrey100, RoundedCornerShape(999.dp)),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(barFraction)
+                    .height(10.dp)
+                    .background(graphColor, RoundedCornerShape(999.dp)),
+            )
+        }
+    }
+}
+
+private fun categoryGraphColor(category: String?): Color {
+    return when (category?.uppercase(Locale.US)) {
+        "FOOD" -> TossBlue500
+        "CAFE" -> TossOrange700
+        "SHOPPING" -> TossTeal600
+        "CULTURE" -> TossPurple600
+        "TRANSPORT" -> TossGreen700
+        "LODGING" -> Color(0xFF8B95A1)
+        else -> TossGrey700
     }
 }
 

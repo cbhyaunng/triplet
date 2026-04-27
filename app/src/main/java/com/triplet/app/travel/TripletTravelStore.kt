@@ -97,6 +97,42 @@ object TripletTravelStore {
         persistSnapshot()
     }
 
+    fun addManualExpense(
+        merchantName: String,
+        amountMinor: Long,
+        occurredAt: Instant,
+        category: String,
+        note: String?,
+    ): MatchedExpense {
+        val locationMatch = findNearestLocation(occurredAt)
+        val resolvedNote =
+            note
+                ?.trim()
+                ?.takeIf { it.isNotBlank() }
+                ?: if (locationMatch != null) {
+                    "수동 입력 · 시간 근처 위치 자동 연결"
+                } else {
+                    "수동 입력 · 위치 미연결"
+                }
+        val expense =
+            MatchedExpense(
+                txId = "manual-${UUID.randomUUID()}",
+                merchantName = merchantName.trim(),
+                amountMinor = amountMinor,
+                currencyCode = "KRW",
+                occurredAt = occurredAt,
+                category = category,
+                note = resolvedNote,
+                latitude = locationMatch?.sample?.latitude,
+                longitude = locationMatch?.sample?.longitude,
+                accuracyM = locationMatch?.sample?.accuracyM,
+                matchConfidence = locationMatch?.confidence ?: 0f,
+                reviewStatus = locationMatch?.reviewStatus ?: MatchReviewStatus.NEEDS_REVIEW,
+            )
+        addOrReplaceExpense(expense)
+        return expense
+    }
+
     fun findNearestLocation(target: Instant): LocationMatchResult? {
         val nearest = locationSamples.minByOrNull { sample ->
             abs(sample.capturedAt.toEpochMilli() - target.toEpochMilli())
