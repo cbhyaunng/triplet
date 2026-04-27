@@ -1,0 +1,7 @@
+# Copy this file to local.properties and set your local Android SDK path.
+# Example:
+# sdk.dir=/Users/yourname/Library/Android/sdk
+# MAPS_API_KEY=your_google_maps_android_api_key
+
+sdk.dir=/path/to/your/android/sdk
+MAPS_API_KEY=YOUR_API_KEY

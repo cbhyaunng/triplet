@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Triplet</string>
+    <string name="listener_service_name">Triplet Payment Listener</string>
+    <string name="location_service_name">Triplet Travel Location</string>
+    <string name="location_channel_name">Triplet Travel Mode</string>
+    <string name="location_channel_description">여행모드 중 위치 샘플을 기록합니다.</string>
+</resources>
