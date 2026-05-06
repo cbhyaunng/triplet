@@ -1,0 +1,592 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0065CB362FA88CB639FBF4E0 /* TripletStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 471904E09EE331164F890E9B /* TripletStore.swift */; };
+		00B9A61E7B4C130E463F7288 /* TripletLiveActivityService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B51C103BA1CACB321E9269A5 /* TripletLiveActivityService.swift */; };
+		05974E38F37688646D2F0AAF /* TripletTravelActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EE1910943009DF9DA55956D /* TripletTravelActivityAttributes.swift */; };
+		1863765D0FDBE00DE21D4492 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF9343D2B84E4A56D4F3B40D /* ContentView.swift */; };
+		1DF20D3F01CC528462DFBFC8 /* UserNotifications.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 10F0454FB7F7C13980FADC17 /* UserNotifications.framework */; };
+		2A6EB862C3D930E8FEE17463 /* TripletTravelModeControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40168F0039FD4B0753B8D406 /* TripletTravelModeControl.swift */; };
+		2ADA7B4BD2DB47C8A33A5614 /* TripletIOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8841332FA474C6E2660FA734 /* TripletIOSApp.swift */; };
+		3533711E977C8A0295A27BB4 /* TripletComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7D948C4D37DB454224B1DD4 /* TripletComponents.swift */; };
+		5B5F7FBD9B86BAE82AE64C36 /* TripletDesign.swift in Sources */ = {isa = PBXBuildFile; fileRef = D08515DC1CAB96D21F0126F2 /* TripletDesign.swift */; };
+		6F6731741AC2FE80D5A15ABB /* NotificationAppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B824701D57E42686A501E1D /* NotificationAppDelegate.swift */; };
+		89744BB8348BF120266600D3 /* TripletSharedTravelState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AC2768BC9529B42C7C58CA9 /* TripletSharedTravelState.swift */; };
+		8C5CDDE94A649CD662F143E7 /* AppIntents.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BF36ADFED617F0C8ED19FDF7 /* AppIntents.framework */; };
+		9C7E09EF809DD1B8D217AFF1 /* TripletSharedTravelState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AC2768BC9529B42C7C58CA9 /* TripletSharedTravelState.swift */; };
+		9DAC6CF4EA69A3652AE54158 /* MapKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D4C0C0E157519B5DE18E7BF4 /* MapKit.framework */; };
+		A6ACBADD72A1BA416C968D07 /* TripMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EABA521066E227ED8F9690A /* TripMapView.swift */; };
+		BE8C5EE939AF4D7044130424 /* CoreLocation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 560829564B34A13ADC600FC3 /* CoreLocation.framework */; };
+		C00E84CE23643C1DD075E283 /* DemoPaymentNotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EC04C6D7B6555873E3102A5 /* DemoPaymentNotificationService.swift */; };
+		CAB207A4E7E01FF883F37DD3 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F25CEB68C4E33B41414BE542 /* WidgetKit.framework */; };
+		CD58288FD6322DB2824F3436 /* ActivityKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E6CA5DD68355488C7195B90F /* ActivityKit.framework */; };
+		CE57D4321D4FB1044FEF1AD1 /* TripletLiveActivityExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A78127E972E0AEDCE57D9050 /* TripletLiveActivityExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		D091CDB46B611A0B8D9BF959 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D33B383DC9A4AA481862DCEA /* SwiftUI.framework */; };
+		E0FCADD6B7C21ED5582917AE /* TripletModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21BA0029916891D7F482E1B4 /* TripletModels.swift */; };
+		E2CF8DDB2B131F59165AD9B6 /* TripletTravelActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EE1910943009DF9DA55956D /* TripletTravelActivityAttributes.swift */; };
+		E3C98CE5648F1849ABA1AC5F /* DemoNotificationFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0160B74115C7460E0EC52A25 /* DemoNotificationFormView.swift */; };
+		E545C4C3514BAF9D3E0B39C7 /* TripletLiveActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E7787D5E3EDC366CDE2BD0A /* TripletLiveActivityWidget.swift */; };
+		E6E3A7ECCAD07A97F2DB559A /* AppIntents.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BF36ADFED617F0C8ED19FDF7 /* AppIntents.framework */; };
+		EADA31C23C2A5960C8444C85 /* ActivityKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E6CA5DD68355488C7195B90F /* ActivityKit.framework */; };
+		FA0A34F723CFB20EED29C7C3 /* TravelLocationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 990EE3A447C38A51B164A5EA /* TravelLocationService.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		1D5B795B3F1D9EFF8ABF61E0 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 04BC4917E7D4EE3D3CA5A1C5 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = AD704CEE7D670BE80F50D208;
+			remoteInfo = TripletLiveActivityExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		3B4224D2908BFC1F1673023E /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				CE57D4321D4FB1044FEF1AD1 /* TripletLiveActivityExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		0160B74115C7460E0EC52A25 /* DemoNotificationFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoNotificationFormView.swift; sourceTree = "<group>"; };
+		10F0454FB7F7C13980FADC17 /* UserNotifications.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UserNotifications.framework; path = System/Library/Frameworks/UserNotifications.framework; sourceTree = SDKROOT; };
+		21BA0029916891D7F482E1B4 /* TripletModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripletModels.swift; sourceTree = "<group>"; };
+		2EABA521066E227ED8F9690A /* TripMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripMapView.swift; sourceTree = "<group>"; };
+		3123ACB3CEDDF72E79DEC3D7 /* TripletLiveActivityExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TripletLiveActivityExtension.entitlements; sourceTree = "<group>"; };
+		40168F0039FD4B0753B8D406 /* TripletTravelModeControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripletTravelModeControl.swift; sourceTree = "<group>"; };
+		471904E09EE331164F890E9B /* TripletStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripletStore.swift; sourceTree = "<group>"; };
+		4AC2768BC9529B42C7C58CA9 /* TripletSharedTravelState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripletSharedTravelState.swift; sourceTree = "<group>"; };
+		560829564B34A13ADC600FC3 /* CoreLocation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreLocation.framework; path = System/Library/Frameworks/CoreLocation.framework; sourceTree = SDKROOT; };
+		8841332FA474C6E2660FA734 /* TripletIOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripletIOSApp.swift; sourceTree = "<group>"; };
+		8B824701D57E42686A501E1D /* NotificationAppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationAppDelegate.swift; sourceTree = "<group>"; };
+		8DEB14766E25117AECE6DFA5 /* TripletIOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TripletIOS.entitlements; sourceTree = "<group>"; };
+		8E7787D5E3EDC366CDE2BD0A /* TripletLiveActivityWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripletLiveActivityWidget.swift; sourceTree = "<group>"; };
+		990EE3A447C38A51B164A5EA /* TravelLocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TravelLocationService.swift; sourceTree = "<group>"; };
+		9EC04C6D7B6555873E3102A5 /* DemoPaymentNotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoPaymentNotificationService.swift; sourceTree = "<group>"; };
+		9EE1910943009DF9DA55956D /* TripletTravelActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripletTravelActivityAttributes.swift; sourceTree = "<group>"; };
+		A56A6A5FDEFD9C6BB6104E15 /* TripletIOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = TripletIOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A78127E972E0AEDCE57D9050 /* TripletLiveActivityExtension.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = TripletLiveActivityExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		B51C103BA1CACB321E9269A5 /* TripletLiveActivityService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripletLiveActivityService.swift; sourceTree = "<group>"; };
+		BF36ADFED617F0C8ED19FDF7 /* AppIntents.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppIntents.framework; path = System/Library/Frameworks/AppIntents.framework; sourceTree = SDKROOT; };
+		C7D948C4D37DB454224B1DD4 /* TripletComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripletComponents.swift; sourceTree = "<group>"; };
+		D08515DC1CAB96D21F0126F2 /* TripletDesign.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripletDesign.swift; sourceTree = "<group>"; };
+		D33B383DC9A4AA481862DCEA /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		D4C0C0E157519B5DE18E7BF4 /* MapKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MapKit.framework; path = System/Library/Frameworks/MapKit.framework; sourceTree = SDKROOT; };
+		DF9343D2B84E4A56D4F3B40D /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		DFA6CCA000B88D8DDCDFCACF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		E6CA5DD68355488C7195B90F /* ActivityKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ActivityKit.framework; path = System/Library/Frameworks/ActivityKit.framework; sourceTree = SDKROOT; };
+		F25CEB68C4E33B41414BE542 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		F9330D26A460B37128F251C1 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		099B635A0ACD7CE1DBACC61A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9DAC6CF4EA69A3652AE54158 /* MapKit.framework in Frameworks */,
+				BE8C5EE939AF4D7044130424 /* CoreLocation.framework in Frameworks */,
+				1DF20D3F01CC528462DFBFC8 /* UserNotifications.framework in Frameworks */,
+				CD58288FD6322DB2824F3436 /* ActivityKit.framework in Frameworks */,
+				8C5CDDE94A649CD662F143E7 /* AppIntents.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		73E3A227A2D391BF875EBE48 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EADA31C23C2A5960C8444C85 /* ActivityKit.framework in Frameworks */,
+				CAB207A4E7E01FF883F37DD3 /* WidgetKit.framework in Frameworks */,
+				D091CDB46B611A0B8D9BF959 /* SwiftUI.framework in Frameworks */,
+				E6E3A7ECCAD07A97F2DB559A /* AppIntents.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		190B210A08DA6B6BD5AB666D /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				E6CA5DD68355488C7195B90F /* ActivityKit.framework */,
+				BF36ADFED617F0C8ED19FDF7 /* AppIntents.framework */,
+				560829564B34A13ADC600FC3 /* CoreLocation.framework */,
+				D4C0C0E157519B5DE18E7BF4 /* MapKit.framework */,
+				D33B383DC9A4AA481862DCEA /* SwiftUI.framework */,
+				10F0454FB7F7C13980FADC17 /* UserNotifications.framework */,
+				F25CEB68C4E33B41414BE542 /* WidgetKit.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		22BC92438F8C2453119EA665 /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				D08515DC1CAB96D21F0126F2 /* TripletDesign.swift */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
+		37E500EECA9F46EB2D54B1E4 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				4AC2768BC9529B42C7C58CA9 /* TripletSharedTravelState.swift */,
+				9EE1910943009DF9DA55956D /* TripletTravelActivityAttributes.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		3A1539700D8DF712A809FCAD /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				DF9343D2B84E4A56D4F3B40D /* ContentView.swift */,
+				0160B74115C7460E0EC52A25 /* DemoNotificationFormView.swift */,
+				C7D948C4D37DB454224B1DD4 /* TripletComponents.swift */,
+				2EABA521066E227ED8F9690A /* TripMapView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		3DEB9A6BA3A6A43F133F5C17 = {
+			isa = PBXGroup;
+			children = (
+				37E500EECA9F46EB2D54B1E4 /* Shared */,
+				96ABB193897B6390C2E3E9E6 /* TripletIOS */,
+				4DBBEB40FAC85816F5E87804 /* TripletLiveActivityExtension */,
+				190B210A08DA6B6BD5AB666D /* Frameworks */,
+				A91F2AFE32C0375CE8CF66F2 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		4DBBEB40FAC85816F5E87804 /* TripletLiveActivityExtension */ = {
+			isa = PBXGroup;
+			children = (
+				F9330D26A460B37128F251C1 /* Info.plist */,
+				3123ACB3CEDDF72E79DEC3D7 /* TripletLiveActivityExtension.entitlements */,
+				8E7787D5E3EDC366CDE2BD0A /* TripletLiveActivityWidget.swift */,
+				40168F0039FD4B0753B8D406 /* TripletTravelModeControl.swift */,
+			);
+			path = TripletLiveActivityExtension;
+			sourceTree = "<group>";
+		};
+		7D54A30DB320659BF2FC8E3B /* App */ = {
+			isa = PBXGroup;
+			children = (
+				8B824701D57E42686A501E1D /* NotificationAppDelegate.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		829C8C739A17F97CFA953163 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				21BA0029916891D7F482E1B4 /* TripletModels.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		96ABB193897B6390C2E3E9E6 /* TripletIOS */ = {
+			isa = PBXGroup;
+			children = (
+				DFA6CCA000B88D8DDCDFCACF /* Info.plist */,
+				8DEB14766E25117AECE6DFA5 /* TripletIOS.entitlements */,
+				8841332FA474C6E2660FA734 /* TripletIOSApp.swift */,
+				7D54A30DB320659BF2FC8E3B /* App */,
+				22BC92438F8C2453119EA665 /* Core */,
+				829C8C739A17F97CFA953163 /* Models */,
+				CF03C48958CF42AD45C4A3EA /* Services */,
+				3A1539700D8DF712A809FCAD /* Views */,
+			);
+			path = TripletIOS;
+			sourceTree = "<group>";
+		};
+		A91F2AFE32C0375CE8CF66F2 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A56A6A5FDEFD9C6BB6104E15 /* TripletIOS.app */,
+				A78127E972E0AEDCE57D9050 /* TripletLiveActivityExtension.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		CF03C48958CF42AD45C4A3EA /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				9EC04C6D7B6555873E3102A5 /* DemoPaymentNotificationService.swift */,
+				990EE3A447C38A51B164A5EA /* TravelLocationService.swift */,
+				B51C103BA1CACB321E9269A5 /* TripletLiveActivityService.swift */,
+				471904E09EE331164F890E9B /* TripletStore.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A35255C58C25906965A0586C /* TripletIOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C0A33790D4CB94C2902D5AE5 /* Build configuration list for PBXNativeTarget "TripletIOS" */;
+			buildPhases = (
+				8A5FB3C970456186824C37E5 /* Sources */,
+				099B635A0ACD7CE1DBACC61A /* Frameworks */,
+				3B4224D2908BFC1F1673023E /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				FA9A683DFBF67500C4858307 /* PBXTargetDependency */,
+			);
+			name = TripletIOS;
+			packageProductDependencies = (
+			);
+			productName = TripletIOS;
+			productReference = A56A6A5FDEFD9C6BB6104E15 /* TripletIOS.app */;
+			productType = "com.apple.product-type.application";
+		};
+		AD704CEE7D670BE80F50D208 /* TripletLiveActivityExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 0C16A5755750019DDAA398A2 /* Build configuration list for PBXNativeTarget "TripletLiveActivityExtension" */;
+			buildPhases = (
+				E14CDE1F78430DDE137ACA79 /* Sources */,
+				73E3A227A2D391BF875EBE48 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = TripletLiveActivityExtension;
+			packageProductDependencies = (
+			);
+			productName = TripletLiveActivityExtension;
+			productReference = A78127E972E0AEDCE57D9050 /* TripletLiveActivityExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		04BC4917E7D4EE3D3CA5A1C5 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					A35255C58C25906965A0586C = {
+						ProvisioningStyle = Automatic;
+					};
+					AD704CEE7D670BE80F50D208 = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 0090F26AA932EB8C390C652B /* Build configuration list for PBXProject "TripletIOS" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 3DEB9A6BA3A6A43F133F5C17;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = A91F2AFE32C0375CE8CF66F2 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A35255C58C25906965A0586C /* TripletIOS */,
+				AD704CEE7D670BE80F50D208 /* TripletLiveActivityExtension */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		8A5FB3C970456186824C37E5 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1863765D0FDBE00DE21D4492 /* ContentView.swift in Sources */,
+				E3C98CE5648F1849ABA1AC5F /* DemoNotificationFormView.swift in Sources */,
+				C00E84CE23643C1DD075E283 /* DemoPaymentNotificationService.swift in Sources */,
+				6F6731741AC2FE80D5A15ABB /* NotificationAppDelegate.swift in Sources */,
+				FA0A34F723CFB20EED29C7C3 /* TravelLocationService.swift in Sources */,
+				A6ACBADD72A1BA416C968D07 /* TripMapView.swift in Sources */,
+				3533711E977C8A0295A27BB4 /* TripletComponents.swift in Sources */,
+				5B5F7FBD9B86BAE82AE64C36 /* TripletDesign.swift in Sources */,
+				2ADA7B4BD2DB47C8A33A5614 /* TripletIOSApp.swift in Sources */,
+				00B9A61E7B4C130E463F7288 /* TripletLiveActivityService.swift in Sources */,
+				E0FCADD6B7C21ED5582917AE /* TripletModels.swift in Sources */,
+				89744BB8348BF120266600D3 /* TripletSharedTravelState.swift in Sources */,
+				0065CB362FA88CB639FBF4E0 /* TripletStore.swift in Sources */,
+				05974E38F37688646D2F0AAF /* TripletTravelActivityAttributes.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E14CDE1F78430DDE137ACA79 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E545C4C3514BAF9D3E0B39C7 /* TripletLiveActivityWidget.swift in Sources */,
+				9C7E09EF809DD1B8D217AFF1 /* TripletSharedTravelState.swift in Sources */,
+				E2CF8DDB2B131F59165AD9B6 /* TripletTravelActivityAttributes.swift in Sources */,
+				2A6EB862C3D930E8FEE17463 /* TripletTravelModeControl.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		FA9A683DFBF67500C4858307 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = AD704CEE7D670BE80F50D208 /* TripletLiveActivityExtension */;
+			targetProxy = 1D5B795B3F1D9EFF8ABF61E0 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		17D5E4AF469B686F8297AFD2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = TripletLiveActivityExtension/TripletLiveActivityExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = TripletLiveActivityExtension/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.triplet.ios.liveactivity;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		1F66D007A964D0F0CE5C6DF9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = TripletIOS/TripletIOS.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = TripletIOS/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.triplet.ios;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		498232BC41BE3B5F8885489D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = TripletIOS/TripletIOS.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = TripletIOS/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.triplet.ios;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		50D2679993F41E952AC14958 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 0.1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		5F3BC09FBA8C7A101ECE920B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = TripletLiveActivityExtension/TripletLiveActivityExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = TripletLiveActivityExtension/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.triplet.ios.liveactivity;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		FADF5BC379B6E14B7B8765DA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 0.1.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		0090F26AA932EB8C390C652B /* Build configuration list for PBXProject "TripletIOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				50D2679993F41E952AC14958 /* Debug */,
+				FADF5BC379B6E14B7B8765DA /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		0C16A5755750019DDAA398A2 /* Build configuration list for PBXNativeTarget "TripletLiveActivityExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				17D5E4AF469B686F8297AFD2 /* Debug */,
+				5F3BC09FBA8C7A101ECE920B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		C0A33790D4CB94C2902D5AE5 /* Build configuration list for PBXNativeTarget "TripletIOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1F66D007A964D0F0CE5C6DF9 /* Debug */,
+				498232BC41BE3B5F8885489D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 04BC4917E7D4EE3D3CA5A1C5 /* Project object */;
+}

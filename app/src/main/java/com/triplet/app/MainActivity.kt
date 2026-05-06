@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -38,7 +37,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ReceiptLong
 import androidx.compose.material.icons.rounded.Delete
-import androidx.compose.material.icons.rounded.Explore
+import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Map
@@ -48,6 +47,7 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Stop
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -63,6 +63,7 @@ import androidx.compose.material3.Shapes
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.lightColorScheme
@@ -86,6 +87,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.triplet.app.map.TripletMapSection
 import com.triplet.app.map.TripletFullScreenMap
+import com.triplet.app.map.TripletLocationPickerMap
 import com.triplet.app.location.TravelLocationService
 import com.triplet.app.notification.NotificationDebugEvent
 import com.triplet.app.notification.NotificationStage
@@ -93,6 +95,7 @@ import com.triplet.app.notification.TripletDebugStore
 import com.triplet.app.travel.LocationSample
 import com.triplet.app.travel.MatchedExpense
 import com.triplet.app.travel.MatchReviewStatus
+import com.triplet.app.travel.TripRecord
 import com.triplet.app.travel.TripletTimeFormatter
 import com.triplet.app.travel.TripletTravelStore
 import java.text.NumberFormat
@@ -131,6 +134,7 @@ private val TossRed600 = Color(0xFFE42939)
 private val TossTeal600 = Color(0xFF00A889)
 private val TossPurple600 = Color(0xFF7C5CFF)
 private val manualExpenseInputFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+private val tripRecordPeriodFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy.MM.dd HH:mm")
 private val expenseCategoryOptions = listOf("FOOD", "CAFE", "SHOPPING", "CULTURE", "TRANSPORT", "LODGING", "ETC")
 
 private fun displayCategory(category: String?): String {
@@ -163,6 +167,32 @@ private fun parseManualExpenseDateTime(raw: String): Instant? {
     }.getOrNull()
 }
 
+private fun formatTripRecordPeriod(record: TripRecord): String {
+    val zone = ZoneId.systemDefault()
+    val start = tripRecordPeriodFormatter.format(LocalDateTime.ofInstant(record.startedAt, zone))
+    val end = tripRecordPeriodFormatter.format(LocalDateTime.ofInstant(record.endedAt, zone))
+    return "$start - $end"
+}
+
+private fun tripTotalAmountMinor(record: TripRecord): Long {
+    return record.matchedExpenses.sumOf { it.amountMinor }
+}
+
+private fun tripTopCategory(record: TripRecord): String? {
+    return record.matchedExpenses
+        .groupBy { it.category ?: "ETC" }
+        .maxByOrNull { (_, expenses) -> expenses.sumOf { it.amountMinor } }
+        ?.key
+}
+
+private fun tripCategoryBreakdown(record: TripRecord): List<Pair<String, Long>> {
+    return record.matchedExpenses
+        .groupBy { it.category ?: "ETC" }
+        .mapValues { (_, expenses) -> expenses.sumOf { it.amountMinor } }
+        .toList()
+        .sortedByDescending { it.second }
+}
+
 private enum class TripletTab(
     val label: String,
     val title: String,
@@ -173,6 +203,7 @@ private enum class TripletTab(
     Map("지도", "지도", "이동 경로와 결제 위치", Icons.Rounded.Map),
     Expenses("소비내역", "소비 내역", "결제 기록 전체 보기", Icons.AutoMirrored.Rounded.ReceiptLong),
     Summary("소비요약", "소비 요약", "카테고리별 지출 분석", Icons.Rounded.PieChart),
+    TravelManage("여행관리", "여행관리", "저장된 지난 여행", Icons.Rounded.History),
     Settings("설정", "설정", "권한과 시연 상태 관리", Icons.Rounded.Settings),
 }
 
@@ -186,6 +217,7 @@ private fun TripletDebugApp() {
     val events = TripletDebugStore.events.toList().reversed()
     val expenses = TripletTravelStore.matchedExpenses.toList().sortedByDescending { it.occurredAt }
     val locationSamples = TripletTravelStore.locationSamples.toList().sortedByDescending { it.capturedAt }
+    val archivedTrips = TripletTravelStore.archivedTrips.toList().sortedByDescending { it.endedAt }
     val totalAmountMinor = TripletTravelStore.totalAmountMinor()
     val topCategory = TripletTravelStore.topCategory()
     val categoryBreakdown = TripletTravelStore.categoryBreakdown()
@@ -209,9 +241,14 @@ private fun TripletDebugApp() {
         refreshTick++
     }
     var fullScreenMap by rememberSaveable { mutableStateOf(false) }
+    var fullScreenLocationPicker by rememberSaveable { mutableStateOf(false) }
     var selectedMapExpense by remember { mutableStateOf<MatchedExpense?>(null) }
     var selectedTab by rememberSaveable { mutableStateOf(TripletTab.Home) }
+    var selectedTripRecordId by rememberSaveable { mutableStateOf<String?>(null) }
+    var fullScreenTripRecordId by rememberSaveable { mutableStateOf<String?>(null) }
     var manualExpenseEntryOpen by rememberSaveable { mutableStateOf(false) }
+    var manualSelectedLatitude by rememberSaveable { mutableStateOf<Double?>(null) }
+    var manualSelectedLongitude by rememberSaveable { mutableStateOf<Double?>(null) }
 
     fun requestOrStartTravelMode() {
         if (locationGranted) {
@@ -224,7 +261,20 @@ private fun TripletDebugApp() {
     }
 
     fun stopTravelModeAndRefresh() {
+        val archivedTrip = TripletTravelStore.finishActiveTrip(Instant.now())
         stopTravelMode(context)
+        if (archivedTrip != null) {
+            TripletDebugStore.push(
+                NotificationDebugEvent(
+                    packageName = context.packageName,
+                    stage = NotificationStage.SYSTEM,
+                    summary = "여행 기록 저장 완료",
+                    detail = "${archivedTrip.title} · 결제 ${archivedTrip.matchedExpenses.size}건",
+                ),
+            )
+            selectedTripRecordId = archivedTrip.id
+            selectedTab = TripletTab.TravelManage
+        }
         refreshTick++
     }
 
@@ -253,6 +303,8 @@ private fun TripletDebugApp() {
         occurredAt: Instant,
         category: String,
         note: String?,
+        latitude: Double?,
+        longitude: Double?,
     ) {
         val expense =
             TripletTravelStore.addManualExpense(
@@ -261,6 +313,8 @@ private fun TripletDebugApp() {
                 occurredAt = occurredAt,
                 category = category,
                 note = note,
+                latitude = latitude,
+                longitude = longitude,
             )
         TripletDebugStore.push(
             NotificationDebugEvent(
@@ -271,21 +325,43 @@ private fun TripletDebugApp() {
             ),
         )
         manualExpenseEntryOpen = false
+        manualSelectedLatitude = null
+        manualSelectedLongitude = null
         selectedTab = TripletTab.Expenses
         refreshTick++
     }
 
     TripletAppTheme {
         if (fullScreenMap) {
+            val fullScreenTripRecord =
+                fullScreenTripRecordId?.let { tripId ->
+                    archivedTrips.firstOrNull { it.id == tripId }
+                }
             FullScreenMapPage(
-                samples = locationSamples,
-                expenses = expenses,
+                samples = fullScreenTripRecord?.locationSamples ?: locationSamples,
+                expenses = fullScreenTripRecord?.matchedExpenses?.sortedByDescending { it.occurredAt } ?: expenses,
                 selectedExpense = selectedMapExpense,
                 onBack = {
                     fullScreenMap = false
+                    fullScreenTripRecordId = null
                     selectedMapExpense = null
                 },
                 onExpenseSelected = { selectedMapExpense = it },
+            )
+            return@TripletAppTheme
+        }
+        if (fullScreenLocationPicker) {
+            FullScreenLocationPickerPage(
+                initialLatitude = manualSelectedLatitude ?: locationSamples.firstOrNull()?.latitude ?: 37.5665,
+                initialLongitude = manualSelectedLongitude ?: locationSamples.firstOrNull()?.longitude ?: 126.9780,
+                onBack = { fullScreenLocationPicker = false },
+                onLocationConfirmed = { latitude, longitude ->
+                    manualSelectedLatitude = latitude
+                    manualSelectedLongitude = longitude
+                    manualExpenseEntryOpen = true
+                    selectedTab = TripletTab.Expenses
+                    fullScreenLocationPicker = false
+                },
             )
             return@TripletAppTheme
         }
@@ -334,12 +410,10 @@ private fun TripletDebugApp() {
                             TripletHeroCard(
                                 totalAmountMinor = totalAmountMinor,
                                 expenseCount = expenses.size,
-                                sampleCount = locationSamples.size,
-                                topCategory = topCategory,
                                 travelModeEnabled = travelModeEnabled,
                                 locationServiceActive = locationServiceActive,
                                 onStart = { requestOrStartTravelMode() },
-                                onInjectRoute = { injectDemoRouteAndRefresh() },
+                                onStop = { stopTravelModeAndRefresh() },
                             )
                         }
 
@@ -349,6 +423,7 @@ private fun TripletDebugApp() {
                                 expenses = expenses,
                                 onOpenFullMap = {
                                     selectedMapExpense = null
+                                    fullScreenTripRecordId = null
                                     fullScreenMap = true
                                 },
                             )
@@ -388,20 +463,10 @@ private fun TripletDebugApp() {
                                 expenses = expenses,
                                 onOpenFullMap = {
                                     selectedMapExpense = null
+                                    fullScreenTripRecordId = null
                                     fullScreenMap = true
                                 },
                             )
-                        }
-                        item {
-                            StatusCard(
-                                title = "지도 보기",
-                                body = "결제 순서대로 선을 이어 여행 소비 흐름을 보여줍니다.",
-                            ) {
-                                Text(
-                                    text = "지도 카드를 누르면 화면 전체로 확대됩니다. 전체 지도에서는 핀을 눌러 결제 장소와 금액을 확인할 수 있습니다.",
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
                         }
                     }
 
@@ -417,13 +482,22 @@ private fun TripletDebugApp() {
                         if (manualExpenseEntryOpen) {
                             item {
                                 ManualExpenseEntryCard(
-                                    onSave = { merchantName, amountMinor, occurredAt, category, note ->
+                                    selectedLatitude = manualSelectedLatitude,
+                                    selectedLongitude = manualSelectedLongitude,
+                                    onOpenLocationPicker = { fullScreenLocationPicker = true },
+                                    onClearSelectedLocation = {
+                                        manualSelectedLatitude = null
+                                        manualSelectedLongitude = null
+                                    },
+                                    onSave = { merchantName, amountMinor, occurredAt, category, note, latitude, longitude ->
                                         addManualExpenseAndRefresh(
                                             merchantName = merchantName,
                                             amountMinor = amountMinor,
                                             occurredAt = occurredAt,
                                             category = category,
                                             note = note,
+                                            latitude = latitude,
+                                            longitude = longitude,
                                         )
                                     },
                                 )
@@ -447,15 +521,76 @@ private fun TripletDebugApp() {
                                 categoryBreakdown = categoryBreakdown,
                             )
                         }
-                        item {
-                            StatusCard(
-                                title = "분석 기준",
-                                body = "결제 알림과 위치 매칭 결과를 카테고리별로 집계합니다.",
-                            ) {
-                                Text(
-                                    text = "발표에서는 분야별 지출 그래프를 통해 여행 중 어떤 분야에 소비가 집중됐는지 보여줄 수 있습니다.",
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    }
+
+                    TripletTab.TravelManage -> {
+                        val selectedTrip =
+                            selectedTripRecordId?.let { tripId ->
+                                archivedTrips.firstOrNull { it.id == tripId }
+                            }
+                        if (selectedTrip == null) {
+                            item {
+                                SectionTitle(
+                                    title = "지난 여행",
+                                    subtitle = "저장된 여행 ${archivedTrips.size}개",
                                 )
+                            }
+                            if (archivedTrips.isEmpty()) {
+                                item { EmptyTripRecordCard() }
+                            } else {
+                                items(archivedTrips, key = { it.id }) { trip ->
+                                    TripRecordCard(
+                                        record = trip,
+                                        onClick = { selectedTripRecordId = trip.id },
+                                    )
+                                }
+                            }
+                        } else {
+                            item {
+                                SectionTitleRow(
+                                    title = selectedTrip.title,
+                                    subtitle = formatTripRecordPeriod(selectedTrip),
+                                    actionLabel = "목록",
+                                    onAction = { selectedTripRecordId = null },
+                                )
+                            }
+                            item {
+                                TripRecordSummaryCard(record = selectedTrip)
+                            }
+                            item {
+                                TripletMapSection(
+                                    samples = selectedTrip.locationSamples,
+                                    expenses = selectedTrip.matchedExpenses.sortedByDescending { it.occurredAt },
+                                    onOpenFullMap = {
+                                        selectedMapExpense = null
+                                        fullScreenTripRecordId = selectedTrip.id
+                                        fullScreenMap = true
+                                    },
+                                )
+                            }
+                            item {
+                                StatsSummaryCard(
+                                    totalAmountMinor = tripTotalAmountMinor(selectedTrip),
+                                    expenseCount = selectedTrip.matchedExpenses.size,
+                                    topCategory = tripTopCategory(selectedTrip),
+                                    categoryBreakdown = tripCategoryBreakdown(selectedTrip),
+                                )
+                            }
+                            item {
+                                SectionTitle(
+                                    title = "여행 소비 내역",
+                                    subtitle = "결제 ${selectedTrip.matchedExpenses.size}건",
+                                )
+                            }
+                            if (selectedTrip.matchedExpenses.isEmpty()) {
+                                item { EmptyExpenseCard() }
+                            } else {
+                                items(
+                                    selectedTrip.matchedExpenses.sortedByDescending { it.occurredAt },
+                                    key = { it.txId },
+                                ) { expense ->
+                                    ExpenseCard(expense)
+                                }
                             }
                         }
                     }
@@ -514,13 +649,6 @@ private fun TripletDebugApp() {
                                             Icon(Icons.Rounded.Stop, contentDescription = null, modifier = Modifier.size(18.dp))
                                             Spacer(modifier = Modifier.width(6.dp))
                                             Text("여행모드 종료")
-                                        }
-                                        OutlinedButton(
-                                            onClick = { injectDemoRouteAndRefresh() },
-                                        ) {
-                                            Icon(Icons.Rounded.Map, contentDescription = null, modifier = Modifier.size(18.dp))
-                                            Spacer(modifier = Modifier.width(6.dp))
-                                            Text("데모 경로 주입")
                                         }
                                         OutlinedButton(
                                             onClick = { clearDemoDataAndRefresh() },
@@ -685,8 +813,8 @@ private fun TripletBottomNavigationBar(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(78.dp)
-                    .padding(horizontal = 10.dp),
+                    .height(82.dp)
+                    .padding(horizontal = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -714,14 +842,14 @@ private fun TripletBottomNavigationItem(
     Column(
         modifier = modifier
             .clickable(onClick = onClick)
-            .padding(vertical = 8.dp),
+            .padding(vertical = 7.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(5.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Icon(
             imageVector = tab.icon,
             contentDescription = tab.label,
-            modifier = Modifier.size(27.dp),
+            modifier = Modifier.size(24.dp),
             tint = contentColor,
         )
         Text(
@@ -747,6 +875,7 @@ private fun FullScreenMapPage(
             modifier = Modifier.fillMaxSize(),
             samples = samples,
             expenses = expenses,
+            selectedExpenseTxId = selectedExpense?.txId,
             onExpenseSelected = onExpenseSelected,
         )
 
@@ -773,6 +902,101 @@ private fun FullScreenMapPage(
         MapExpenseBottomSheet(
             modifier = Modifier.align(Alignment.BottomCenter),
             expense = selectedExpense,
+        )
+    }
+}
+
+@Composable
+private fun FullScreenLocationPickerPage(
+    initialLatitude: Double,
+    initialLongitude: Double,
+    onBack: () -> Unit,
+    onLocationConfirmed: (Double, Double) -> Unit,
+) {
+    var pickerLatitude by rememberSaveable { mutableStateOf(initialLatitude) }
+    var pickerLongitude by rememberSaveable { mutableStateOf(initialLongitude) }
+    var confirmDialogOpen by rememberSaveable { mutableStateOf(false) }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        TripletLocationPickerMap(
+            modifier = Modifier.fillMaxSize(),
+            latitude = pickerLatitude,
+            longitude = pickerLongitude,
+            onLocationSelected = { latitude, longitude ->
+                pickerLatitude = latitude
+                pickerLongitude = longitude
+                confirmDialogOpen = true
+            },
+        )
+
+        Surface(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(start = 18.dp, top = 48.dp)
+                .shadow(12.dp, CircleShape),
+            color = Color.White,
+            contentColor = TossGrey900,
+            shape = CircleShape,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(52.dp)
+                    .background(Color.White, CircleShape)
+                    .clickable(onClick = onBack),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "뒤로가기")
+            }
+        }
+
+        Surface(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .padding(start = 16.dp, end = 16.dp, bottom = 18.dp)
+                .shadow(16.dp, MaterialTheme.shapes.large),
+            color = Color.White,
+            shape = MaterialTheme.shapes.large,
+        ) {
+            Column(
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = "지도에서 장소 선택",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = TossGrey900,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = "결제한 장소를 지도에서 탭하거나 핀을 움직여 선택하세요.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TossGrey600,
+                )
+            }
+        }
+    }
+
+    if (confirmDialogOpen) {
+        AlertDialog(
+            onDismissRequest = { confirmDialogOpen = false },
+            title = { Text("이 장소로 선택하시겠습니까?") },
+            text = { Text("선택한 위치가 수동 소비 입력의 결제 장소로 저장됩니다.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        confirmDialogOpen = false
+                        onLocationConfirmed(pickerLatitude, pickerLongitude)
+                    },
+                ) {
+                    Text("예")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmDialogOpen = false }) {
+                    Text("아니요")
+                }
+            },
         )
     }
 }
@@ -915,12 +1139,10 @@ private fun ExpenseListPage(
 private fun TripletHeroCard(
     totalAmountMinor: Long,
     expenseCount: Int,
-    sampleCount: Int,
-    topCategory: String?,
     travelModeEnabled: Boolean,
     locationServiceActive: Boolean,
     onStart: () -> Unit,
-    onInjectRoute: () -> Unit,
+    onStop: () -> Unit,
 ) {
     val amountFormat = remember { NumberFormat.getIntegerInstance(Locale.KOREA) }
     Card(
@@ -953,7 +1175,7 @@ private fun TripletHeroCard(
                         modifier = Modifier.padding(top = 6.dp),
                     )
                     Text(
-                        text = "${expenseCount}건 · 경로 ${sampleCount}점 · ${topCategory?.let(::displayCategory) ?: "분석 대기"}",
+                        text = "결제 ${expenseCount}건",
                         color = TossGrey500,
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(top = 4.dp),
@@ -971,24 +1193,26 @@ private fun TripletHeroCard(
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
-                    onClick = onStart,
-                    modifier = Modifier.weight(1f),
+                    onClick = {
+                        if (travelModeEnabled) {
+                            onStop()
+                        } else {
+                            onStart()
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = TossBlue500,
+                        containerColor = if (travelModeEnabled) TossGrey900 else TossBlue500,
                         contentColor = Color.White,
                     ),
                 ) {
-                    Icon(Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Icon(
+                        imageVector = if (travelModeEnabled) Icons.Rounded.Stop else Icons.Rounded.PlayArrow,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("여행 시작")
-                }
-                TossSecondaryButton(
-                    onClick = onInjectRoute,
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Icon(Icons.Rounded.Explore, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("데모 경로")
+                    Text(if (travelModeEnabled) "여행 중지" else "여행 시작")
                 }
             }
         }
@@ -996,22 +1220,122 @@ private fun TripletHeroCard(
 }
 
 @Composable
-private fun TossSecondaryButton(
+private fun TripRecordCard(
+    record: TripRecord,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    contentColor: Color = TossGrey800,
-    content: @Composable RowScope.() -> Unit,
 ) {
-    OutlinedButton(
-        onClick = onClick,
-        modifier = modifier,
-        border = null,
-        colors = ButtonDefaults.outlinedButtonColors(
-            containerColor = TossGrey100,
-            contentColor = contentColor,
-        ),
-        content = content,
-    )
+    val amountFormat = remember { NumberFormat.getIntegerInstance(Locale.KOREA) }
+    val totalAmount = tripTotalAmountMinor(record)
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = MaterialTheme.shapes.large,
+        border = BorderStroke(1.dp, TossGrey200),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = record.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = TossGrey900,
+                        fontWeight = FontWeight.Black,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = formatTripRecordPeriod(record),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TossGrey600,
+                        modifier = Modifier.padding(top = 3.dp),
+                    )
+                }
+                Text(
+                    text = "${amountFormat.format(totalAmount)}원",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = TossGrey900,
+                    fontWeight = FontWeight.Black,
+                )
+            }
+
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                InfoTag(
+                    label = "결제 ${record.matchedExpenses.size}건",
+                    containerColor = TossBlue50,
+                    contentColor = TossBlue600,
+                )
+                InfoTag(
+                    label = "경로 ${record.locationSamples.size}점",
+                    containerColor = TossGrey100,
+                    contentColor = TossGrey600,
+                )
+                InfoTag(
+                    label = tripTopCategory(record)?.let(::displayCategory) ?: "분석 대기",
+                    containerColor = TossOrange50,
+                    contentColor = TossOrange700,
+                )
+            }
+
+            Text(
+                text = "자세히 보기",
+                style = MaterialTheme.typography.bodySmall,
+                color = TossBlue600,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+    }
+}
+
+@Composable
+private fun TripRecordSummaryCard(record: TripRecord) {
+    val amountFormat = remember { NumberFormat.getIntegerInstance(Locale.KOREA) }
+    StatusCard(
+        title = "여행 요약",
+        body = "종료된 여행의 경로와 소비를 다시 볼 수 있습니다.",
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            SummaryMetric("총 소비", "${amountFormat.format(tripTotalAmountMinor(record))}원")
+            SummaryMetric("결제", "${record.matchedExpenses.size}건")
+            SummaryMetric("경로", "${record.locationSamples.size}점")
+        }
+    }
+}
+
+@Composable
+private fun EmptyTripRecordCard() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text("아직 저장된 여행이 없습니다.", fontWeight = FontWeight.Bold)
+            Text(
+                "여행모드를 켜고 결제 내역을 기록한 뒤 여행 중지를 누르면 이곳에 자동 저장됩니다.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
 }
 
 @Composable
@@ -1157,7 +1481,11 @@ private fun InfoTag(
 
 @Composable
 private fun ManualExpenseEntryCard(
-    onSave: (String, Long, Instant, String, String?) -> Unit,
+    selectedLatitude: Double?,
+    selectedLongitude: Double?,
+    onOpenLocationPicker: () -> Unit,
+    onClearSelectedLocation: () -> Unit,
+    onSave: (String, Long, Instant, String, String?, Double?, Double?) -> Unit,
 ) {
     var merchantName by rememberSaveable { mutableStateOf("") }
     var amountText by rememberSaveable { mutableStateOf("") }
@@ -1172,7 +1500,7 @@ private fun ManualExpenseEntryCard(
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(
-                text = "입력한 날짜시간 근처에 위치 샘플이 있으면 지도 핀으로 자동 연결됩니다.",
+                text = "장소명과 금액을 입력한 뒤, 필요하면 지도에서 결제 위치를 직접 선택할 수 있습니다.",
                 style = MaterialTheme.typography.bodySmall,
                 color = TossGrey600,
             )
@@ -1187,6 +1515,37 @@ private fun ManualExpenseEntryCard(
                 placeholder = { Text("예: 광장시장 순희네빈대떡") },
                 singleLine = true,
             )
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
+                    onClick = onOpenLocationPicker,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Icon(Icons.Rounded.LocationOn, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("지도에서 장소 선택")
+                }
+                if (selectedLatitude != null && selectedLongitude != null) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "지도에서 선택한 장소가 연결되었습니다.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TossBlue600,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Text(
+                            text = "해제",
+                            modifier = Modifier.clickable(onClick = onClearSelectedLocation),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TossGrey600,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                }
+            }
             OutlinedTextField(
                 value = amountText,
                 onValueChange = {
@@ -1265,12 +1624,15 @@ private fun ManualExpenseEntryCard(
                                 occurredAt,
                                 selectedCategory,
                                 noteText.trim().takeIf { it.isNotBlank() },
+                                selectedLatitude,
+                                selectedLongitude,
                             )
                             merchantName = ""
                             amountText = ""
                             dateTimeText = formatManualExpenseDateTime(Instant.now())
                             selectedCategory = "FOOD"
                             noteText = ""
+                            onClearSelectedLocation()
                             errorMessage = null
                         }
                     }
@@ -1528,10 +1890,6 @@ private fun EmptyExpenseCard() {
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text("아직 소비 내역이 없습니다.", fontWeight = FontWeight.Bold)
-            Text(
-                "데모 경로를 주입하거나 테스트 결제 알림을 보내보세요.",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
     }
 }
@@ -1539,6 +1897,29 @@ private fun EmptyExpenseCard() {
 @Composable
 private fun ExpenseCard(expense: MatchedExpense) {
     val amountFormat = remember { NumberFormat.getIntegerInstance(Locale.KOREA) }
+    val isDirectLocation =
+        expense.txId.startsWith("manual-") &&
+            expense.latitude != null &&
+            expense.longitude != null &&
+            expense.accuracyM == null
+    val matchLabel =
+        when {
+            isDirectLocation -> "직접 선택"
+            expense.reviewStatus == MatchReviewStatus.AUTO_CONFIRMED -> "자동 매칭"
+            else -> "확인 필요"
+        }
+    val matchContainerColor =
+        when {
+            isDirectLocation -> TossBlue50
+            expense.reviewStatus == MatchReviewStatus.AUTO_CONFIRMED -> TossGreen50
+            else -> TossOrange50
+        }
+    val matchContentColor =
+        when {
+            isDirectLocation -> TossBlue600
+            expense.reviewStatus == MatchReviewStatus.AUTO_CONFIRMED -> TossGreen700
+            else -> TossOrange700
+        }
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
@@ -1587,30 +1968,12 @@ private fun ExpenseCard(expense: MatchedExpense) {
                     contentColor = TossBlue600,
                 )
                 InfoTag(
-                    label = if (expense.reviewStatus == MatchReviewStatus.AUTO_CONFIRMED) {
-                        "자동 매칭"
-                    } else {
-                        "확인 필요"
-                    },
-                    containerColor = if (expense.reviewStatus == MatchReviewStatus.AUTO_CONFIRMED) TossGreen50 else TossOrange50,
-                    contentColor = if (expense.reviewStatus == MatchReviewStatus.AUTO_CONFIRMED) TossGreen700 else TossOrange700,
-                )
-                InfoTag(
-                    label = "정확도 ${String.format(Locale.US, "%.0f", expense.matchConfidence * 100)}%",
-                    containerColor = TossGrey100,
-                    contentColor = TossGrey600,
+                    label = matchLabel,
+                    containerColor = matchContainerColor,
+                    contentColor = matchContentColor,
                 )
             }
 
-            Text(
-                text = if (expense.latitude != null && expense.longitude != null) {
-                    "위치 ${String.format(Locale.US, "%.5f", expense.latitude)}, ${String.format(Locale.US, "%.5f", expense.longitude)}"
-                } else {
-                    "위치 샘플이 없어 수동 검토가 필요합니다."
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
             if (!expense.note.isNullOrBlank()) {
                 Text(
                     text = expense.note,
@@ -1700,7 +2063,7 @@ private fun NotificationEventCard(event: NotificationDebugEvent) {
 }
 
 private fun startTravelMode(context: Context) {
-    TripletTravelStore.updateTravelModeEnabled(true)
+    TripletTravelStore.startNewTrip()
     TravelLocationService.start(context)
 }
 

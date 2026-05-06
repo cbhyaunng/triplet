@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Divider
@@ -33,13 +34,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -58,12 +63,16 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun DemoNotifierApp() {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     val history = remember { mutableStateListOf<DemoPaymentPayload>() }
     var merchant by rememberSaveable { mutableStateOf("스타벅스") }
     var amountText by rememberSaveable { mutableStateOf("12800") }
     var currency by rememberSaveable { mutableStateOf("KRW") }
     var category by rememberSaveable { mutableStateOf(DemoCategory.CAFE.code) }
     var note by rememberSaveable { mutableStateOf("오사카역 지점") }
+    var latitudeText by rememberSaveable { mutableStateOf("37.5796") }
+    var longitudeText by rememberSaveable { mutableStateOf("126.9864") }
+    var delaySecondsText by rememberSaveable { mutableStateOf("0") }
     var statusMessage by rememberSaveable { mutableStateOf("알림을 보내 Triplet listener를 테스트하세요.") }
 
     val requestNotificationsPermission = rememberLauncherForActivityResult(
@@ -116,18 +125,24 @@ private fun DemoNotifierApp() {
                                 amountText = "12800"
                                 category = DemoCategory.CAFE.code
                                 note = "오사카역 지점"
+                                latitudeText = "37.5796"
+                                longitudeText = "126.9864"
                             }
                             TemplateButtonRow(label = "세븐일레븐 5,000원") {
                                 merchant = "세븐일레븐"
                                 amountText = "5000"
                                 category = DemoCategory.SHOPPING.code
                                 note = "편의점 간식"
+                                latitudeText = "37.5774"
+                                longitudeText = "126.9827"
                             }
                             TemplateButtonRow(label = "공항철도 4,450원") {
                                 merchant = "공항철도"
                                 amountText = "4450"
                                 category = DemoCategory.TRANSPORT.code
                                 note = "교통비"
+                                latitudeText = "37.5701"
+                                longitudeText = "126.9997"
                             }
                         }
                     }
@@ -174,13 +189,67 @@ private fun DemoNotifierApp() {
                                 modifier = Modifier.fillMaxWidth(),
                                 label = { Text("메모") },
                             )
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedTextField(
+                                    value = latitudeText,
+                                    onValueChange = { latitudeText = it },
+                                    modifier = Modifier.weight(1f),
+                                    label = { Text("위도") },
+                                    placeholder = { Text("37.5796") },
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                )
+                                OutlinedTextField(
+                                    value = longitudeText,
+                                    onValueChange = { longitudeText = it },
+                                    modifier = Modifier.weight(1f),
+                                    label = { Text("경도") },
+                                    placeholder = { Text("126.9864") },
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                )
+                            }
+                            Text(
+                                text = "좌표를 입력하면 Triplet이 GPS 샘플 대신 이 위치를 결제 장소로 사용합니다.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            OutlinedTextField(
+                                value = delaySecondsText,
+                                onValueChange = { delaySecondsText = it.filter(Char::isDigit) },
+                                modifier = Modifier.fillMaxWidth(),
+                                label = { Text("몇 초 뒤 발송") },
+                                placeholder = { Text("0") },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            )
+                            Text(
+                                text = "0초는 즉시 발송, 최대 300초까지 예약할 수 있습니다.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
 
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Button(
                                     onClick = {
                                         val amountMinor = amountText.toLongOrNull()
+                                        val delaySeconds = delaySecondsText.ifBlank { "0" }.toLongOrNull()
+                                        val latitude = latitudeText.trim().takeIf { it.isNotBlank() }?.toDoubleOrNull()
+                                        val longitude = longitudeText.trim().takeIf { it.isNotBlank() }?.toDoubleOrNull()
                                         if (merchant.isBlank() || amountMinor == null || amountMinor <= 0L) {
                                             statusMessage = "가맹점명과 올바른 금액을 입력해 주세요."
+                                            return@Button
+                                        }
+                                        if (latitude == null || latitude !in -90.0..90.0) {
+                                            statusMessage = "위도는 -90~90 사이 숫자로 입력해 주세요."
+                                            return@Button
+                                        }
+                                        if (longitude == null || longitude !in -180.0..180.0) {
+                                            statusMessage = "경도는 -180~180 사이 숫자로 입력해 주세요."
+                                            return@Button
+                                        }
+                                        if (delaySeconds == null || delaySeconds !in 0L..300L) {
+                                            statusMessage = "발송 지연 시간은 0~300초 사이로 입력해 주세요."
                                             return@Button
                                         }
 
@@ -197,14 +266,27 @@ private fun DemoNotifierApp() {
                                             category = category.ifBlank { DemoCategory.ETC.code }.uppercase(),
                                             occurredAt = OffsetDateTime.now(),
                                             note = note.trim().ifBlank { null },
+                                            latitude = latitude,
+                                            longitude = longitude,
                                         )
 
-                                        DemoNotificationSender.send(context, payload)
-                                        history.add(0, payload)
-                                        statusMessage = "알림 발송 완료: ${payload.merchantName} / ${payload.amountMinor} ${payload.currencyCode}"
+                                        if (delaySeconds == 0L) {
+                                            DemoNotificationSender.send(context, payload)
+                                            history.add(0, payload)
+                                            statusMessage = "알림 발송 완료: ${payload.merchantName} / ${payload.amountMinor} ${payload.currencyCode}"
+                                        } else {
+                                            val appContext = context.applicationContext
+                                            statusMessage = "${delaySeconds}초 뒤 알림 발송 예정: ${payload.merchantName}"
+                                            coroutineScope.launch {
+                                                delay(delaySeconds * 1000L)
+                                                DemoNotificationSender.send(appContext, payload)
+                                                history.add(0, payload)
+                                                statusMessage = "예약 알림 발송 완료: ${payload.merchantName} / ${payload.amountMinor} ${payload.currencyCode}"
+                                            }
+                                        }
                                     },
                                 ) {
-                                    Text("지금 발송")
+                                    Text("알림보내기")
                                 }
                                 OutlinedButton(
                                     onClick = {
@@ -213,6 +295,9 @@ private fun DemoNotifierApp() {
                                         currency = "KRW"
                                         category = DemoCategory.CAFE.code
                                         note = ""
+                                        latitudeText = "37.5796"
+                                        longitudeText = "126.9864"
+                                        delaySecondsText = "0"
                                         statusMessage = "입력값을 초기화했습니다."
                                     },
                                 ) {
@@ -307,6 +392,13 @@ private fun HistoryCard(payload: DemoPaymentPayload) {
             payload.note?.let {
                 Divider()
                 Text(text = it, style = MaterialTheme.typography.bodySmall)
+            }
+            if (payload.latitude != null && payload.longitude != null) {
+                Text(
+                    text = "lat=${payload.latitude}, lng=${payload.longitude}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }

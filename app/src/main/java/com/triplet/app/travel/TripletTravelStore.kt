@@ -7,9 +7,9 @@ import androidx.compose.runtime.setValue
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.UUID
 import kotlin.math.abs
 import kotlin.math.max
-import java.util.UUID
 
 data class LocationSample(
     val id: String,
@@ -47,12 +47,23 @@ data class MatchedExpense(
     val reviewStatus: MatchReviewStatus,
 )
 
+data class TripRecord(
+    val id: String,
+    val title: String,
+    val startedAt: Instant,
+    val endedAt: Instant,
+    val locationSamples: List<LocationSample>,
+    val matchedExpenses: List<MatchedExpense>,
+)
+
 object TripletTravelStore {
     var travelModeEnabled by mutableStateOf(false)
     var locationServiceActive by mutableStateOf(false)
+    var activeTripStartedAt: Instant? by mutableStateOf(null)
 
     val locationSamples = mutableStateListOf<LocationSample>()
     val matchedExpenses = mutableStateListOf<MatchedExpense>()
+    val archivedTrips = mutableStateListOf<TripRecord>()
     private var suppressPersistence = false
 
     fun clearTravelData() {
@@ -61,7 +72,22 @@ object TripletTravelStore {
         persistSnapshot()
     }
 
+    fun startNewTrip(startedAt: Instant = Instant.now()) {
+        if (!travelModeEnabled) {
+            locationSamples.clear()
+            matchedExpenses.clear()
+            activeTripStartedAt = startedAt
+        }
+        travelModeEnabled = true
+        persistSnapshot()
+    }
+
     fun updateTravelModeEnabled(enabled: Boolean) {
+        if (enabled) {
+            startNewTrip()
+            return
+        }
+        activeTripStartedAt = null
         travelModeEnabled = enabled
         persistSnapshot()
     }
@@ -103,13 +129,18 @@ object TripletTravelStore {
         occurredAt: Instant,
         category: String,
         note: String?,
+        latitude: Double? = null,
+        longitude: Double? = null,
     ): MatchedExpense {
         val locationMatch = findNearestLocation(occurredAt)
+        val hasManualLocation = latitude != null && longitude != null
         val resolvedNote =
             note
                 ?.trim()
                 ?.takeIf { it.isNotBlank() }
-                ?: if (locationMatch != null) {
+                ?: if (hasManualLocation) {
+                    "수동 입력 · 지도에서 위치 선택"
+                } else if (locationMatch != null) {
                     "수동 입력 · 시간 근처 위치 자동 연결"
                 } else {
                     "수동 입력 · 위치 미연결"
@@ -123,11 +154,16 @@ object TripletTravelStore {
                 occurredAt = occurredAt,
                 category = category,
                 note = resolvedNote,
-                latitude = locationMatch?.sample?.latitude,
-                longitude = locationMatch?.sample?.longitude,
-                accuracyM = locationMatch?.sample?.accuracyM,
-                matchConfidence = locationMatch?.confidence ?: 0f,
-                reviewStatus = locationMatch?.reviewStatus ?: MatchReviewStatus.NEEDS_REVIEW,
+                latitude = latitude ?: locationMatch?.sample?.latitude,
+                longitude = longitude ?: locationMatch?.sample?.longitude,
+                accuracyM = if (hasManualLocation) null else locationMatch?.sample?.accuracyM,
+                matchConfidence = if (hasManualLocation) 1f else locationMatch?.confidence ?: 0f,
+                reviewStatus =
+                    if (hasManualLocation) {
+                        MatchReviewStatus.AUTO_CONFIRMED
+                    } else {
+                        locationMatch?.reviewStatus ?: MatchReviewStatus.NEEDS_REVIEW
+                    },
             )
         addOrReplaceExpense(expense)
         return expense
@@ -157,14 +193,57 @@ object TripletTravelStore {
         )
     }
 
+    fun finishActiveTrip(endedAt: Instant = Instant.now()): TripRecord? {
+        if (locationSamples.isEmpty() && matchedExpenses.isEmpty()) {
+            travelModeEnabled = false
+            activeTripStartedAt = null
+            persistSnapshot()
+            return null
+        }
+
+        val startedAt =
+            activeTripStartedAt
+                ?: matchedExpenses.minOfOrNull { it.occurredAt }
+                ?: locationSamples.minOfOrNull { it.capturedAt }
+                ?: endedAt
+        travelModeEnabled = false
+        activeTripStartedAt = null
+        val record =
+            TripRecord(
+                id = "trip-${UUID.randomUUID()}",
+                title = buildTripTitle(startedAt, matchedExpenses.toList()),
+                startedAt = startedAt,
+                endedAt = endedAt,
+                locationSamples = locationSamples.sortedBy { it.capturedAt },
+                matchedExpenses = matchedExpenses.sortedBy { it.occurredAt },
+            )
+
+        archivedTrips.add(0, record)
+        while (archivedTrips.size > 30) {
+            archivedTrips.removeAt(archivedTrips.lastIndex)
+        }
+        locationSamples.clear()
+        matchedExpenses.clear()
+        persistSnapshot()
+        return record
+    }
+
+    fun deleteArchivedTrip(tripId: String) {
+        archivedTrips.removeAll { it.id == tripId }
+        persistSnapshot()
+    }
+
     fun restoreSnapshot(snapshot: TripletSnapshot) {
         suppressPersistence = true
         travelModeEnabled = false
         locationServiceActive = false
+        activeTripStartedAt = snapshot.activeTripStartedAt
         locationSamples.clear()
         locationSamples.addAll(snapshot.locationSamples)
         matchedExpenses.clear()
         matchedExpenses.addAll(snapshot.matchedExpenses.sortedBy { it.occurredAt })
+        archivedTrips.clear()
+        archivedTrips.addAll(snapshot.archivedTrips.sortedByDescending { it.endedAt })
         suppressPersistence = false
     }
 
@@ -270,8 +349,10 @@ object TripletTravelStore {
         TripletPersistence.persist(
             TripletSnapshot(
                 travelModeEnabled = travelModeEnabled,
+                activeTripStartedAt = activeTripStartedAt,
                 locationSamples = locationSamples.toList(),
                 matchedExpenses = matchedExpenses.toList(),
+                archivedTrips = archivedTrips.toList(),
             ),
         )
     }
@@ -279,6 +360,22 @@ object TripletTravelStore {
 
 val TripletTimeFormatter: DateTimeFormatter =
     DateTimeFormatter.ofPattern("MM-dd HH:mm:ss").withZone(ZoneId.systemDefault())
+
+private val TripRecordTitleFormatter: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("yyyy.MM.dd").withZone(ZoneId.systemDefault())
+
+private fun buildTripTitle(
+    startedAt: Instant,
+    expenses: List<MatchedExpense>,
+): String {
+    val dateLabel = TripRecordTitleFormatter.format(startedAt)
+    val firstPlace = expenses.minByOrNull { it.occurredAt }?.merchantName
+    return if (firstPlace.isNullOrBlank()) {
+        "$dateLabel 여행"
+    } else {
+        "$dateLabel $firstPlace"
+    }
+}
 
 private data class DemoStop(
     val merchant: String,

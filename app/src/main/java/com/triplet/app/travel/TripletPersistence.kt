@@ -8,8 +8,10 @@ import java.util.concurrent.Executors
 
 data class TripletSnapshot(
     val travelModeEnabled: Boolean,
+    val activeTripStartedAt: Instant?,
     val locationSamples: List<LocationSample>,
     val matchedExpenses: List<MatchedExpense>,
+    val archivedTrips: List<TripRecord>,
 )
 
 object TripletPersistence {
@@ -36,46 +38,10 @@ object TripletPersistence {
                 val root =
                     JSONObject().apply {
                         put("travelModeEnabled", snapshot.travelModeEnabled)
-                        put(
-                            "locationSamples",
-                            JSONArray().apply {
-                                snapshot.locationSamples.forEach { sample ->
-                                    put(
-                                        JSONObject().apply {
-                                            put("id", sample.id)
-                                            put("latitude", sample.latitude)
-                                            put("longitude", sample.longitude)
-                                            put("accuracyM", sample.accuracyM.toDouble())
-                                            put("capturedAt", sample.capturedAt.toEpochMilli())
-                                            put("source", sample.source)
-                                        },
-                                    )
-                                }
-                            },
-                        )
-                        put(
-                            "matchedExpenses",
-                            JSONArray().apply {
-                                snapshot.matchedExpenses.forEach { expense ->
-                                    put(
-                                        JSONObject().apply {
-                                            put("txId", expense.txId)
-                                            put("merchantName", expense.merchantName)
-                                            put("amountMinor", expense.amountMinor)
-                                            put("currencyCode", expense.currencyCode)
-                                            put("occurredAt", expense.occurredAt.toEpochMilli())
-                                            put("category", expense.category)
-                                            put("note", expense.note)
-                                            put("latitude", expense.latitude)
-                                            put("longitude", expense.longitude)
-                                            put("accuracyM", expense.accuracyM?.toDouble())
-                                            put("matchConfidence", expense.matchConfidence.toDouble())
-                                            put("reviewStatus", expense.reviewStatus.name)
-                                        },
-                                    )
-                                }
-                            },
-                        )
+                        put("activeTripStartedAt", snapshot.activeTripStartedAt?.toEpochMilli() ?: JSONObject.NULL)
+                        put("locationSamples", locationSamplesToJson(snapshot.locationSamples))
+                        put("matchedExpenses", matchedExpensesToJson(snapshot.matchedExpenses))
+                        put("archivedTrips", tripRecordsToJson(snapshot.archivedTrips))
                     }
                 context.openFileOutput(FILE_NAME, Context.MODE_PRIVATE).use { output ->
                     output.write(root.toString().toByteArray())
@@ -93,16 +59,79 @@ object TripletPersistence {
 
         val root = JSONObject(raw)
         val travelModeEnabled = root.optBoolean("travelModeEnabled", false)
+        val activeTripStartedAt =
+            root.optLongOrNull("activeTripStartedAt")?.let { Instant.ofEpochMilli(it) }
         val locationSamples =
             root.optJSONArray("locationSamples")?.toLocationSamples().orEmpty()
         val matchedExpenses =
             root.optJSONArray("matchedExpenses")?.toMatchedExpenses().orEmpty()
+        val archivedTrips =
+            root.optJSONArray("archivedTrips")?.toTripRecords().orEmpty()
 
         return TripletSnapshot(
             travelModeEnabled = travelModeEnabled,
+            activeTripStartedAt = activeTripStartedAt,
             locationSamples = locationSamples,
             matchedExpenses = matchedExpenses,
+            archivedTrips = archivedTrips,
         )
+    }
+
+    private fun locationSamplesToJson(samples: List<LocationSample>): JSONArray {
+        return JSONArray().apply {
+            samples.forEach { sample -> put(sample.toJson()) }
+        }
+    }
+
+    private fun matchedExpensesToJson(expenses: List<MatchedExpense>): JSONArray {
+        return JSONArray().apply {
+            expenses.forEach { expense -> put(expense.toJson()) }
+        }
+    }
+
+    private fun tripRecordsToJson(records: List<TripRecord>): JSONArray {
+        return JSONArray().apply {
+            records.forEach { record ->
+                put(
+                    JSONObject().apply {
+                        put("id", record.id)
+                        put("title", record.title)
+                        put("startedAt", record.startedAt.toEpochMilli())
+                        put("endedAt", record.endedAt.toEpochMilli())
+                        put("locationSamples", locationSamplesToJson(record.locationSamples))
+                        put("matchedExpenses", matchedExpensesToJson(record.matchedExpenses))
+                    },
+                )
+            }
+        }
+    }
+
+    private fun LocationSample.toJson(): JSONObject {
+        return JSONObject().apply {
+            put("id", id)
+            put("latitude", latitude)
+            put("longitude", longitude)
+            put("accuracyM", accuracyM.toDouble())
+            put("capturedAt", capturedAt.toEpochMilli())
+            put("source", source)
+        }
+    }
+
+    private fun MatchedExpense.toJson(): JSONObject {
+        return JSONObject().apply {
+            put("txId", txId)
+            put("merchantName", merchantName)
+            put("amountMinor", amountMinor)
+            put("currencyCode", currencyCode)
+            put("occurredAt", occurredAt.toEpochMilli())
+            put("category", category)
+            put("note", note)
+            put("latitude", latitude)
+            put("longitude", longitude)
+            put("accuracyM", accuracyM?.toDouble())
+            put("matchConfidence", matchConfidence.toDouble())
+            put("reviewStatus", reviewStatus.name)
+        }
     }
 
     private fun JSONArray.toLocationSamples(): List<LocationSample> {
@@ -140,9 +169,30 @@ object TripletPersistence {
                         longitude = obj.optDoubleOrNull("longitude"),
                         accuracyM = obj.optDoubleOrNull("accuracyM")?.toFloat(),
                         matchConfidence = obj.optDouble("matchConfidence", 0.0).toFloat(),
-                        reviewStatus = MatchReviewStatus.valueOf(
-                            obj.optString("reviewStatus", MatchReviewStatus.NEEDS_REVIEW.name),
-                        ),
+                        reviewStatus =
+                            runCatching {
+                                MatchReviewStatus.valueOf(
+                                    obj.optString("reviewStatus", MatchReviewStatus.NEEDS_REVIEW.name),
+                                )
+                            }.getOrDefault(MatchReviewStatus.NEEDS_REVIEW),
+                    ),
+                )
+            }
+        }
+    }
+
+    private fun JSONArray.toTripRecords(): List<TripRecord> {
+        return buildList {
+            for (i in 0 until length()) {
+                val obj = getJSONObject(i)
+                add(
+                    TripRecord(
+                        id = obj.getString("id"),
+                        title = obj.optString("title").takeIf { it.isNotBlank() } ?: "지난 여행",
+                        startedAt = Instant.ofEpochMilli(obj.getLong("startedAt")),
+                        endedAt = Instant.ofEpochMilli(obj.getLong("endedAt")),
+                        locationSamples = obj.optJSONArray("locationSamples")?.toLocationSamples().orEmpty(),
+                        matchedExpenses = obj.optJSONArray("matchedExpenses")?.toMatchedExpenses().orEmpty(),
                     ),
                 )
             }
@@ -152,4 +202,8 @@ object TripletPersistence {
 
 private fun JSONObject.optDoubleOrNull(key: String): Double? {
     return if (!has(key) || isNull(key)) null else optDouble(key)
+}
+
+private fun JSONObject.optLongOrNull(key: String): Long? {
+    return if (!has(key) || isNull(key)) null else optLong(key)
 }

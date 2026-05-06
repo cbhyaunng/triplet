@@ -1,5 +1,11 @@
 package com.triplet.app.map
 
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.RectF
+import android.graphics.Color as AndroidColor
 import android.os.Bundle
 import android.view.ViewGroup
 import androidx.compose.foundation.background
@@ -36,6 +42,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.MapView
+import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
@@ -60,6 +67,8 @@ private val MapBlue50 = Color(0xFFE8F3FF)
 private val MapBlue600 = Color(0xFF2272EB)
 private val MapOrange50 = Color(0xFFFFF3E0)
 private val MapOrange700 = Color(0xFFF57800)
+private val regularExpensePinIcon by lazy { BitmapDescriptorFactory.fromBitmap(createExpensePinBitmap(selected = false)) }
+private val selectedExpensePinIcon by lazy { BitmapDescriptorFactory.fromBitmap(createExpensePinBitmap(selected = true)) }
 
 @Composable
 fun TripletMapSection(
@@ -76,7 +85,7 @@ fun TripletMapSection(
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
     ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -84,8 +93,8 @@ fun TripletMapSection(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "지도 위 소비 기록",
-                        style = MaterialTheme.typography.titleLarge,
+                        text = "소비 지도",
+                        style = MaterialTheme.typography.titleMedium,
                         color = MapGrey900,
                         fontWeight = FontWeight.Bold,
                     )
@@ -93,25 +102,38 @@ fun TripletMapSection(
                         text = if (BuildConfig.MAPS_API_KEY.isBlank()) {
                             "지도 준비 중"
                         } else {
-                            "이동 경로와 결제 위치"
+                            "결제 위치와 이동 경로"
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 4.dp),
+                        modifier = Modifier.padding(top = 2.dp),
+                    )
+                }
+                Surface(
+                    modifier = Modifier.clickable(onClick = onOpenFullMap),
+                    color = MapBlue50,
+                    contentColor = MapBlue600,
+                    shape = CircleShape,
+                ) {
+                    Text(
+                        text = "자세히 보기",
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
                     )
                 }
             }
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                MapPill("경로 ${samples.size}점", MapBlue50, MapBlue600)
-                MapPill("소비 ${expenses.size}건", MapOrange50, MapOrange700)
+                MapPill("경로 ${samples.size}", MapBlue50, MapBlue600)
+                MapPill("소비 ${expenses.size}", MapOrange50, MapOrange700)
             }
 
             if (BuildConfig.MAPS_API_KEY.isBlank()) {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .aspectRatio(1.25f),
+                        .aspectRatio(1.05f),
                     colors = CardDefaults.cardColors(containerColor = MapGrey50),
                 ) {
                     Column(
@@ -136,7 +158,7 @@ fun TripletMapSection(
                     GoogleMapView(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .aspectRatio(1.25f),
+                            .aspectRatio(1.05f),
                         samples = samples,
                         expenses = expenses,
                         onExpenseSelected = {},
@@ -172,6 +194,7 @@ private fun GoogleMapView(
     modifier: Modifier,
     samples: List<LocationSample>,
     expenses: List<MatchedExpense>,
+    selectedExpenseTxId: String? = null,
     onExpenseSelected: (MatchedExpense) -> Unit,
 ) {
     val mapView = rememberMapViewWithLifecycle()
@@ -190,13 +213,13 @@ private fun GoogleMapView(
                     googleMap = map
                     map.uiSettings.isZoomControlsEnabled = true
                     map.uiSettings.isCompassEnabled = true
-                    updateMapContent(mapView, map, samples, expenses, onExpenseSelected)
+                    updateMapContent(mapView, map, samples, expenses, selectedExpenseTxId, onExpenseSelected)
                 }
             }
         },
         update = {
             googleMap?.let { map ->
-                updateMapContent(mapView, map, samples, expenses, onExpenseSelected)
+                updateMapContent(mapView, map, samples, expenses, selectedExpenseTxId, onExpenseSelected)
             }
         },
     )
@@ -207,6 +230,7 @@ fun TripletFullScreenMap(
     modifier: Modifier = Modifier,
     samples: List<LocationSample>,
     expenses: List<MatchedExpense>,
+    selectedExpenseTxId: String? = null,
     onExpenseSelected: (MatchedExpense) -> Unit,
 ) {
     if (BuildConfig.MAPS_API_KEY.isBlank()) {
@@ -223,9 +247,109 @@ fun TripletFullScreenMap(
             modifier = modifier,
             samples = samples,
             expenses = expenses,
+            selectedExpenseTxId = selectedExpenseTxId,
             onExpenseSelected = onExpenseSelected,
         )
     }
+}
+
+@Composable
+fun TripletLocationPickerMap(
+    modifier: Modifier = Modifier,
+    latitude: Double,
+    longitude: Double,
+    onLocationSelected: (Double, Double) -> Unit,
+) {
+    if (BuildConfig.MAPS_API_KEY.isBlank()) {
+        Box(
+            modifier = modifier
+                .fillMaxWidth()
+                .background(MapGrey50),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("지도 준비 중", color = MapGrey900, fontWeight = FontWeight.Bold)
+        }
+    } else {
+        GoogleLocationPickerMap(
+            modifier = modifier,
+            latitude = latitude,
+            longitude = longitude,
+            onLocationSelected = onLocationSelected,
+        )
+    }
+}
+
+@Composable
+private fun GoogleLocationPickerMap(
+    modifier: Modifier,
+    latitude: Double,
+    longitude: Double,
+    onLocationSelected: (Double, Double) -> Unit,
+) {
+    val mapView = rememberMapViewWithLifecycle()
+    var googleMap by remember { mutableStateOf<GoogleMap?>(null) }
+    var marker by remember { mutableStateOf<Marker?>(null) }
+    var initialCameraMoved by remember { mutableStateOf(false) }
+
+    fun updateMarker(map: GoogleMap, position: LatLng) {
+        val currentMarker = marker
+        if (currentMarker == null) {
+            marker =
+                map.addMarker(
+                    MarkerOptions()
+                        .position(position)
+                        .title("선택한 위치")
+                        .draggable(true)
+                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ORANGE)),
+                )
+        } else {
+            currentMarker.position = position
+        }
+    }
+
+    AndroidView(
+        modifier = modifier,
+        factory = {
+            mapView.apply {
+                layoutParams =
+                    ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                    )
+                getMapAsync { map ->
+                    googleMap = map
+                    map.uiSettings.isCompassEnabled = true
+                    map.uiSettings.isZoomControlsEnabled = true
+                    val selectedPosition = LatLng(latitude, longitude)
+                    updateMarker(map, selectedPosition)
+                    if (!initialCameraMoved) {
+                        map.moveCamera(CameraUpdateFactory.newLatLngZoom(selectedPosition, 16f))
+                        initialCameraMoved = true
+                    }
+                    map.setOnMapClickListener { tapped ->
+                        updateMarker(map, tapped)
+                        onLocationSelected(tapped.latitude, tapped.longitude)
+                    }
+                    map.setOnMarkerDragListener(
+                        object : GoogleMap.OnMarkerDragListener {
+                            override fun onMarkerDragStart(dragged: Marker) = Unit
+
+                            override fun onMarkerDrag(dragged: Marker) = Unit
+
+                            override fun onMarkerDragEnd(dragged: Marker) {
+                                onLocationSelected(dragged.position.latitude, dragged.position.longitude)
+                            }
+                        },
+                    )
+                }
+            }
+        },
+        update = {
+            googleMap?.let { map ->
+                updateMarker(map, LatLng(latitude, longitude))
+            }
+        },
+    )
 }
 
 private fun updateMapContent(
@@ -233,6 +357,7 @@ private fun updateMapContent(
     map: GoogleMap,
     samples: List<LocationSample>,
     expenses: List<MatchedExpense>,
+    selectedExpenseTxId: String?,
     onExpenseSelected: (MatchedExpense) -> Unit,
 ) {
     map.clear()
@@ -268,20 +393,15 @@ private fun updateMapContent(
     expenses.forEach { expense ->
         val lat = expense.latitude ?: return@forEach
         val lng = expense.longitude ?: return@forEach
+        val selected = expense.txId == selectedExpenseTxId
         val marker = map.addMarker(
             MarkerOptions()
                 .position(LatLng(lat, lng))
                 .title(expense.merchantName)
                 .snippet("${amountFormat.format(expense.amountMinor)}원")
-                .icon(
-                    BitmapDescriptorFactory.defaultMarker(
-                        if (expense.matchConfidence >= 0.7f) {
-                            BitmapDescriptorFactory.HUE_ORANGE
-                        } else {
-                            BitmapDescriptorFactory.HUE_ORANGE
-                        },
-                    ),
-                ),
+                .icon(expensePinIcon(selected))
+                .anchor(0.5f, 1f)
+                .zIndex(if (selected) 10f else 1f),
         )
         if (marker != null) {
             markerExpenses[marker] = expense
@@ -321,6 +441,59 @@ private fun updateMapContent(
             map.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(37.5665, 126.9780), 11f))
         }
     }
+}
+
+private fun expensePinIcon(selected: Boolean): BitmapDescriptor {
+    return if (selected) selectedExpensePinIcon else regularExpensePinIcon
+}
+
+private fun createExpensePinBitmap(selected: Boolean): Bitmap {
+    val width = if (selected) 82 else 64
+    val height = if (selected) 104 else 82
+    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+    val centerX = width / 2f
+    val top = if (selected) 6f else 5f
+    val bottom = height - if (selected) 10f else 8f
+    val fillColor = if (selected) 0xFFE42939.toInt() else 0xFFF57800.toInt()
+
+    val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0x33000000
+        style = Paint.Style.FILL
+    }
+    canvas.drawOval(
+        RectF(width * 0.24f, height * 0.83f, width * 0.76f, height * 0.96f),
+        shadowPaint,
+    )
+
+    val pinPath = Path().apply {
+        moveTo(centerX, bottom)
+        cubicTo(width * 0.12f, height * 0.58f, width * 0.10f, top, centerX, top)
+        cubicTo(width * 0.90f, top, width * 0.88f, height * 0.58f, centerX, bottom)
+        close()
+    }
+    val pinPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = fillColor
+        style = Paint.Style.FILL
+    }
+    canvas.drawPath(pinPath, pinPaint)
+
+    val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = AndroidColor.WHITE
+        style = Paint.Style.STROKE
+        strokeWidth = if (selected) 5f else 4f
+    }
+    canvas.drawPath(pinPath, strokePaint)
+
+    val innerRadius = if (selected) 12f else 9f
+    val innerCenterY = if (selected) height * 0.34f else height * 0.35f
+    val innerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = AndroidColor.WHITE
+        style = Paint.Style.FILL
+    }
+    canvas.drawCircle(centerX, innerCenterY, innerRadius, innerPaint)
+
+    return bitmap
 }
 
 private fun distanceMeters(from: LatLng, to: LatLng): Double {

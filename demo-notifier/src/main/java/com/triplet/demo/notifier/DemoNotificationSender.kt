@@ -20,6 +20,8 @@ data class DemoPaymentPayload(
     val category: String,
     val occurredAt: OffsetDateTime,
     val note: String?,
+    val latitude: Double?,
+    val longitude: Double?,
 )
 
 enum class DemoCategory(val code: String) {
@@ -48,6 +50,8 @@ object DemoNotificationSender {
             putString("triplet.demo.occurred_at", occurredAt)
             putString("triplet.demo.category", payload.category)
             putString("triplet.demo.note", payload.note)
+            payload.latitude?.let { putDouble("triplet.demo.latitude", it) }
+            payload.longitude?.let { putDouble("triplet.demo.longitude", it) }
         }
         val bigText = buildString {
             append("merchant=${payload.merchantName}")
@@ -56,6 +60,10 @@ object DemoNotificationSender {
             append("; occurred_at=$occurredAt")
             append("; category=${payload.category}")
             append("; tx_id=${payload.txId}")
+            if (payload.latitude != null && payload.longitude != null) {
+                append("; latitude=${payload.latitude}")
+                append("; longitude=${payload.longitude}")
+            }
             payload.note?.takeIf { it.isNotBlank() }?.let {
                 append("; note=$it")
             }

@@ -1,11 +1,13 @@
-# TRIPLET Android Docs
+# TRIPLET Docs
 
-트립랫 안드로이드 앱 구현을 위한 기준 문서 모음입니다.
+트립랫 앱 구현과 발표 시연을 위한 기준 문서 모음입니다.
 
 ## 문서 목록
 
 - [TRIPLET_ANDROID_ARCHITECTURE.md](./TRIPLET_ANDROID_ARCHITECTURE.md)
   - 제품 정의, MVP 범위, 핵심 흐름, 기술 스택, 안드로이드 프로젝트 폴더 구조
+- [TRIPLET_IOS_ARCHITECTURE.md](./TRIPLET_IOS_ARCHITECTURE.md)
+  - iOS 제약을 반영한 발표용 앱 구조, 로컬 알림 시연 흐름, SwiftUI 프로젝트 설계
 - [TRIPLET_ROOM_SCHEMA.md](./TRIPLET_ROOM_SCHEMA.md)
   - Room 엔티티, 관계, 인덱스, DAO 역할, 로컬 데이터 흐름
 - [TRIPLET_PERMISSION_FLOW.md](./TRIPLET_PERMISSION_FLOW.md)
@@ -24,15 +26,16 @@
 ## 권장 읽는 순서
 
 1. Android Architecture
-2. Room Schema
-3. Permission Flow
-4. Server API
-5. Demo Notification App
-6. Listener Code Structure
-7. Notification Format Spec
-8. Implementation Checklist
+2. iOS Architecture
+3. Room Schema
+4. Permission Flow
+5. Server API
+6. Demo Notification App
+7. Listener Code Structure
+8. Notification Format Spec
+9. Implementation Checklist
 
-## 이번 문서에서 고정한 전제
+## Android 문서에서 고정한 전제
 
 - 플랫폼은 안드로이드만 고려한다.
 - 핵심 기능은 `여행모드 + 결제 알림 수집 + 위치 매칭 + 지도 가계부`다.
@@ -45,7 +48,13 @@
 - 자동 매칭이 애매한 경우를 위해 `수동 수정`과 `수동 입력`을 반드시 제공한다.
 - 서버에는 구조화된 결제/위치 데이터를 저장하되, 카드 알림 원문 전체는 장기 보관하지 않는다.
 
-## MVP 범위
+## iOS 추가 전제
+
+- iOS는 다른 앱 알림을 읽을 수 없으므로 실제 카드사 알림 수집은 제외한다.
+- iOS 발표용 데모는 Triplet 앱 내부에서 로컬 결제 알림을 만들고, 앱이 해당 payload 를 파싱하는 방식으로 시연한다.
+- iOS 지도는 MapKit, 위치는 CoreLocation, 저장은 SwiftData 또는 JSON 파일 저장을 우선 검토한다.
+
+## Android MVP 범위
 
 - 여행 생성/시작/종료
 - 여행모드 ON/OFF
@@ -57,9 +66,9 @@
 - 지역별 소비 집중도
 - 서버 동기화
 
-## MVP 제외 항목
+## Android MVP 제외 항목
 
-- iOS 앱
+- iOS 앱은 Android MVP 범위에서는 제외하지만, 별도 iOS 설계 문서에서 다룬다.
 - SMS 직접 읽기
 - AI 여행 경로 추천
 - 주변 광고 푸시

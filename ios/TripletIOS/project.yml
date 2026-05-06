@@ -1,0 +1,52 @@
+name: TripletIOS
+options:
+  bundleIdPrefix: com.triplet
+  deploymentTarget:
+    iOS: "17.0"
+settings:
+  base:
+    CURRENT_PROJECT_VERSION: 1
+    MARKETING_VERSION: 0.1.0
+    SWIFT_VERSION: 5.0
+    TARGETED_DEVICE_FAMILY: "1,2"
+targets:
+  TripletIOS:
+    type: application
+    platform: iOS
+    sources:
+      - TripletIOS
+      - Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.triplet.ios
+        INFOPLIST_FILE: TripletIOS/Info.plist
+        CODE_SIGN_ENTITLEMENTS: TripletIOS/TripletIOS.entitlements
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_STYLE: Automatic
+    dependencies:
+      - sdk: MapKit.framework
+      - sdk: CoreLocation.framework
+      - sdk: UserNotifications.framework
+      - sdk: ActivityKit.framework
+      - sdk: AppIntents.framework
+      - target: TripletLiveActivityExtension
+        embed: true
+
+  TripletLiveActivityExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - Shared
+      - TripletLiveActivityExtension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.triplet.ios.liveactivity
+        INFOPLIST_FILE: TripletLiveActivityExtension/Info.plist
+        CODE_SIGN_ENTITLEMENTS: TripletLiveActivityExtension/TripletLiveActivityExtension.entitlements
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_STYLE: Automatic
+    dependencies:
+      - sdk: ActivityKit.framework
+      - sdk: WidgetKit.framework
+      - sdk: SwiftUI.framework
+      - sdk: AppIntents.framework

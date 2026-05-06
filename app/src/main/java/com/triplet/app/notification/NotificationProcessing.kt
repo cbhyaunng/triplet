@@ -20,6 +20,8 @@ private const val KEY_CURRENCY = "triplet.demo.currency"
 private const val KEY_OCCURRED_AT = "triplet.demo.occurred_at"
 private const val KEY_CATEGORY = "triplet.demo.category"
 private const val KEY_NOTE = "triplet.demo.note"
+private const val KEY_LATITUDE = "triplet.demo.latitude"
+private const val KEY_LONGITUDE = "triplet.demo.longitude"
 
 data class ExtractedNotificationPayload(
     val packageName: String,
@@ -40,6 +42,8 @@ data class ParsedNotificationPayload(
     val occurredAt: Instant,
     val category: String?,
     val note: String?,
+    val latitude: Double?,
+    val longitude: Double?,
 )
 
 interface PaymentNotificationParser {
@@ -117,6 +121,8 @@ object DemoPaymentNotificationParser : PaymentNotificationParser {
         val occurredAt = parseInstantLenient(occurredAtRaw)
         val category = payload.extras.getString(KEY_CATEGORY) ?: kv["category"]
         val note = payload.extras.getString(KEY_NOTE) ?: kv["note"]
+        val latitude = payload.extras.optDoubleOrNull(KEY_LATITUDE) ?: kv["latitude"]?.toDoubleOrNull()
+        val longitude = payload.extras.optDoubleOrNull(KEY_LONGITUDE) ?: kv["longitude"]?.toDoubleOrNull()
 
         return ParsedNotificationPayload(
             txId = txId,
@@ -126,6 +132,8 @@ object DemoPaymentNotificationParser : PaymentNotificationParser {
             occurredAt = occurredAt,
             category = category,
             note = note,
+            latitude = latitude,
+            longitude = longitude,
         )
     }
 
@@ -213,7 +221,13 @@ object TripletNotificationProcessor {
 
         runCatching { parser.parse(extracted) }
             .onSuccess { parsed ->
-                val locationMatch = TripletTravelStore.findNearestLocation(parsed.occurredAt)
+                val hasDemoCoordinates = parsed.latitude != null && parsed.longitude != null
+                val locationMatch =
+                    if (hasDemoCoordinates) {
+                        null
+                    } else {
+                        TripletTravelStore.findNearestLocation(parsed.occurredAt)
+                    }
                 val expense =
                     MatchedExpense(
                         txId = parsed.txId,
@@ -223,11 +237,16 @@ object TripletNotificationProcessor {
                         occurredAt = parsed.occurredAt,
                         category = parsed.category,
                         note = parsed.note,
-                        latitude = locationMatch?.sample?.latitude,
-                        longitude = locationMatch?.sample?.longitude,
-                        accuracyM = locationMatch?.sample?.accuracyM,
-                        matchConfidence = locationMatch?.confidence ?: 0f,
-                        reviewStatus = locationMatch?.reviewStatus ?: MatchReviewStatus.NEEDS_REVIEW,
+                        latitude = parsed.latitude ?: locationMatch?.sample?.latitude,
+                        longitude = parsed.longitude ?: locationMatch?.sample?.longitude,
+                        accuracyM = if (hasDemoCoordinates) null else locationMatch?.sample?.accuracyM,
+                        matchConfidence = if (hasDemoCoordinates) 1f else locationMatch?.confidence ?: 0f,
+                        reviewStatus =
+                            if (hasDemoCoordinates) {
+                                MatchReviewStatus.AUTO_CONFIRMED
+                            } else {
+                                locationMatch?.reviewStatus ?: MatchReviewStatus.NEEDS_REVIEW
+                            },
                     )
                 TripletTravelStore.addOrReplaceExpense(expense)
 
@@ -256,12 +275,16 @@ object TripletNotificationProcessor {
                     NotificationDebugEvent(
                         packageName = extracted.packageName,
                         stage = NotificationStage.MATCHED,
-                        summary = if (locationMatch != null) {
+                        summary = if (hasDemoCoordinates) {
+                            "시연 좌표 사용"
+                        } else if (locationMatch != null) {
                             "위치 매칭 성공: ${"%.2f".format(locationMatch.confidence)}"
                         } else {
                             "위치 매칭 실패"
                         },
-                        detail = if (locationMatch != null) {
+                        detail = if (hasDemoCoordinates) {
+                            "lat=${parsed.latitude}, lng=${parsed.longitude}, review=${MatchReviewStatus.AUTO_CONFIRMED}"
+                        } else if (locationMatch != null) {
                             buildString {
                                 append("lat=")
                                 append(locationMatch.sample.latitude)
@@ -291,4 +314,8 @@ object TripletNotificationProcessor {
                 )
             }
     }
+}
+
+private fun Bundle.optDoubleOrNull(key: String): Double? {
+    return if (!containsKey(key)) null else getDouble(key)
 }
